@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#080808">
+<title>RaceControl - Монитор Зрителей</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<style>
+body { 
+    background: #080808; color: #fff; font-family: 'Courier New', monospace; 
+    padding: 20px; margin: 0; display: flex; flex-direction: column; 
+    min-height: 100vh; box-sizing: border-box; 
+}
+/* --- АДАПТИВНАЯ ШАПКА --- */
+.header { 
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; 
+    background: #111; padding: 15px; border-radius: 8px; border: 1px solid #222; 
+    margin-bottom: 20px; flex-shrink: 0; gap: 15px;
+}
+.header-info { flex: 1 1 200px; min-width: 150px; }
+.header-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+
+.timer-title { color: #888; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; font-weight: bold;}
+#session-status { color: #aaa; margin-top: 5px; font-size: 14px; line-height: 1.3; }
+#main-timer { font-size: 46px; font-weight: bold; color: #00ffcc; font-family: monospace; line-height: 1; }
+
+/* Универсальные кнопки для монитора */
+.header-btn {
+    background: #333; color: #fff; border: 1px solid #555; padding: 10px 15px; 
+    border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.3s;
+    white-space: nowrap;
+}
+.header-btn.sound-off { background: #ffaa00; color: #000; border: none; }
+
+
+/* Если экран телефона (меньше 700px) */
+@media (max-width: 700px) {
+    .header { 
+        flex-direction: column; text-align: center; 
+        padding: 10px; gap: 10px; 
+        margin-bottom: 10px; 
+    }
+    /* ВАЖНО: сбрасываем flex-basis, который раздувал высоту в 200px */
+    .header-info { flex: none; width: 100%; margin: 0; } 
+    .header-controls { justify-content: center; width: 100%; gap: 10px; }
+    /* Таймер по центру и без лишних отступов */
+    #main-timer { font-size: 40px; width: 100%; text-align: center; order: -1; margin: 0; line-height: 1; }
+}
+
+.content-area { 
+    display: flex; flex-direction: column; gap: 20px; flex-grow: 1; 
+    width: 100%; align-items: center;
+}
+
+.map-container { 
+    width: 100%; max-width: 1200px; display: none; justify-content: center; align-items: center;
+    border-radius: 8px; border: 1px solid #222; background: #111; padding: 10px; box-sizing: border-box;
+    flex-shrink: 0;
+}
+#specTrackMap { 
+    position: relative; 
+    width: 100%; 
+    max-height: 45vh; 
+    /* Магическая формула: запрещаем ширине расти больше, чем позволяет высота */
+    max-width: calc(45vh * var(--ar, 1.7778)); 
+    aspect-ratio: var(--ar, 1.7778);
+    margin: 0 auto; 
+}
+
+#specTrackMapBg { 
+    position: absolute; inset: 0; background-size: 100% 100%; background-position: center; background-repeat: no-repeat; 
+}
+.gate-marker { position: absolute; width: 60px; transform: translate(-50%, -50%); text-align: center; z-index: 10;}
+.gate-label { font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; font-size: 12px; }
+
+.leds { display: flex; justify-content: center; gap: 2px; margin-bottom: 2px; }
+.led { width: 10px; height: 10px; border-radius: 50%; background: #333; transition: background 0.3s, box-shadow 0.3s; }
+
+/* МАЯЧОК ПИЛОТА (Пульсирует постоянно) */
+@keyframes pulseGate {
+    0% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.5); filter: brightness(1.5); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+.pulse-anim { animation: pulseGate 1s infinite; }
+
+.pilots-scroll-wrapper {
+    width: 100%; max-width: 1200px; overflow-x: auto; padding-bottom: 10px;
+}
+.pilots-container { 
+    width: 100%; min-width: 1030px; 
+    position: relative; display: none; transition: height 0.3s;
+}
+.pilot-card { 
+    background: #141414; padding: 12px 20px; border: 1px solid #222; border-radius: 8px; 
+    display: flex; align-items: center; gap: 20px; position: absolute; left: 0; width: 100%; min-width: 1030px;
+    box-sizing: border-box;
+    height: 85px; transition: top 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+}
+.pilot-card.leader { border-color: #00f2ff; box-shadow: 0 0 15px rgba(0, 242, 255, 0.15); }
+.name-block { width: 180px; flex-shrink: 0; }
+.pilot-name { font-size: 18px; font-weight: bold; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;}
+.pilot-reg { font-size: 12px; color: #666; text-transform: uppercase; margin-top: 4px; }
+
+.progress-container { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.progress-bar { width: 100%; height: 10px; background: #000; border-radius: 5px; overflow: hidden; border: 1px solid #333; flex-shrink: 0;}
+.progress-fill { height: 100%; width: 0%; transition: width 0.3s ease-out; }
+
+.stats-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #666; white-space: nowrap;}
+.pilot-timer { font-family: monospace; font-size: 16px; font-weight: bold; color: #00ffcc; background: #000; padding: 2px 6px; border-radius: 4px; box-shadow: inset 0 0 5px rgba(0,0,0,0.8); }
+
+.gate-sequence { flex-grow: 1; display: flex; justify-content: center; gap: 20px; font-weight: bold; font-family: sans-serif; text-transform: uppercase; font-size: 12px;}
+.seq-gate { color: #333; transition: all 0.3s; }
+.seq-gate.active { color: #fff; text-shadow: 0 0 8px rgba(255,255,255,0.9); }
+
+.delta-better { color: #00ff00; font-weight: bold; text-shadow: 0 0 5px #00ff00; margin-left: 5px;}
+.delta-worse { color: #ff4444; font-weight: bold; text-shadow: 0 0 5px #ff4444; margin-left: 5px;}
+.delta-neutral { color: #aaaaaa; margin-left: 5px;}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #111; }
+::-webkit-scrollbar-thumb { background: #00f2ff; border-radius: 3px; }
+
+.fav-btn {
+    cursor: pointer; opacity: 0.3; transition: all 0.2s; font-size: 16px; filter: grayscale(100%);
+    user-select: none;
+}
+.fav-btn:hover { opacity: 0.8; transform: scale(1.2); }
+.fav-btn.active { opacity: 1; filter: grayscale(0%); text-shadow: 0 0 10px #00f2ff; }
+
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-info">
+        <div class="timer-title" id="spec-header-title">LIVE РЕЗУЛЬТАТЫ ГОНКИ</div>
+        <div id="session-status">Ожидание загрузки...</div>
+    </div>
+    <div class="header-controls">
+        <button id="fullscreenBtn" class="header-btn" onclick="toggleFullScreen()">⛶ На весь экран</button>
+        <button id="monitorSoundBtn" class="header-btn sound-off" onclick="toggleMonitorSound()">🔇 Звук выкл</button>
+        <div id="main-timer">00:00</div>
+    </div>
+</div>
+
+<div class="content-area">
+    <div class="map-container" id="map-box">
+        <div id="specTrackMap"><div id="specTrackMapBg"></div></div>
+    </div>
+    
+    <div class="pilots-scroll-wrapper">
+        <div class="pilots-container" id="board"></div>
+    </div>
+</div>
+
+
+<script>
+// ПОДСТАВЬ СВОЮ ССЫЛКУ ИЗ КОНСОЛИ FIREBASE!
+const firebaseConfig = { 
+    databaseURL: "https://racecontrol-f7358-default-rtdb.europe-west1.firebasedatabase.app/" 
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const board = document.getElementById('board');
+const mapBox = document.getElementById('map-box');
+const trackMapBg = document.getElementById('specTrackMapBg');
+const trackMap = document.getElementById('specTrackMap');
+
+let mapGates = []; 
+
+db.ref('liveMapImage').on('value', (snap) => {
+    const m = snap.val();
+    if(m && m.image) {
+        let img = new Image();
+        img.onload = () => { 
+            trackMap.style.setProperty('--ar', img.naturalWidth / img.naturalHeight);
+            trackMapBg.style.backgroundImage = `url(${m.image})`; 
+        };
+        img.src = m.image;
+    } else {
+        trackMapBg.style.backgroundImage = 'none'; 
+        trackMap.style.setProperty('--ar', 16/9);
+    }
+});
+
+db.ref('liveMapOpacity').on('value', (snap) => {
+    if(snap.val() !== null) trackMapBg.style.opacity = snap.val();
+});
+
+db.ref('liveMapConfig').on('value', (snap) => {
+    const m = snap.val();
+    if(m) {
+        trackMap.querySelectorAll('.gate-marker').forEach(e => e.remove());
+        mapGates = m.gates || [];
+        mapGates.forEach(g => {
+            trackMap.innerHTML += `
+            <div class="gate-marker" style="left:${g.left}; top:${g.top};">
+                <div class="leds" id="gate_leds_${g.mark}">
+                    <div class="led" id="led_${g.mark}_0"></div>
+                    <div class="led" id="led_${g.mark}_1"></div>
+                    <div class="led" id="led_${g.mark}_2"></div>
+                    <div class="led" id="led_${g.mark}_3"></div>
+                </div>
+                <div class="gate-label">${g.name}</div>
+            </div>`;
+        });
+    }
+});
+
+let currentRaceData = null;
+let favoritePilots = new Set();
+let lastPilotState = {};
+
+// --- ЗВУКОВЫЕ ПРОФИЛИ ПИЛОТОВ (Привязаны к индексу) ---
+// Каждый индекс звучит по-своему: от низкого синуса до резкого квадрата
+const pilotAudioProfiles = [
+    { freq: 600,  type: 'sine' },      // Индекс 0
+    { freq: 850,  type: 'sine' },      // Индекс 1
+    { freq: 1100, type: 'triangle' },  // Индекс 2
+    { freq: 1400, type: 'triangle' },  // Индекс 3
+    { freq: 700,  type: 'square' },    // Индекс 4
+    { freq: 1000, type: 'square' }     // Индекс 5
+];
+
+function playPilotSound(pilotIndex, isFinish) {
+    if (!monSoundEnabled || !monAudioCtx) return;
+    const prof = pilotAudioProfiles[pilotIndex % pilotAudioProfiles.length];
+    if (isFinish) {
+        playMonTone(prof.freq, 150, 0.2, prof.type);
+        setTimeout(() => playMonTone(prof.freq * 1.25, 300, 0.2, prof.type), 150); // Победный аккорд
+    } else {
+        playMonTone(prof.freq, 100, 0.1, prof.type);
+    }
+}
+
+// --- ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ ЛЮБИМЧИКА ---
+window.toggleFav = function(pid) {
+    if (favoritePilots.has(pid)) favoritePilots.delete(pid);
+    else favoritePilots.add(pid);
+    renderBoard(); // Моментальная перерисовка UI без запроса к базе
+};
+
+// Получаем данные и проверяем, нужно ли пикнуть
+db.ref('liveRace').on('value', (snapshot) => {
+    currentRaceData = snapshot.val();
+    
+    // ЛОГИКА ЗВУКА: Сверяем прошлый gateIndex с новым
+    if (currentRaceData && currentRaceData.pilots) {
+        currentRaceData.pilots.forEach(p => {
+            if (p.active) {
+                let prev = lastPilotState[p.id];
+                if (prev) {
+                    let gateChanged = (p.gateIndex !== prev.gateIndex) && p.gateIndex >= 0;
+                    let justFinished = p.finished && !prev.finished;
+
+                    if (gateChanged || justFinished) {
+                        // Звучим только если нет фильтра ИЛИ пилот в избранном
+                        if (favoritePilots.size === 0 || favoritePilots.has(p.id)) {
+                            playPilotSound(p.index || 0, justFinished);
+                        }
+                    }
+                }
+                lastPilotState[p.id] = { gateIndex: p.gateIndex, finished: p.finished };
+            }
+        });
+    }
+    
+    renderBoard();
+});
+
+function renderBoard() {
+    const data = currentRaceData;
+    if (!data) return;
+
+    if (data.config) {
+        document.getElementById('spec-header-title').innerText = data.config.header || "LIVE РЕЗУЛЬТАТЫ";
+        document.getElementById('session-status').style.display = data.config.showSession ? 'block' : 'none';
+        document.querySelector('.pilots-scroll-wrapper').style.display = data.config.showPilots ? 'block' : 'none';
+        board.style.display = data.config.showPilots ? 'block' : 'none';
+        mapBox.style.display = data.config.showMap ? 'flex' : 'none';
+    }
+
+    if (!data.pilots) {
+        document.getElementById('session-status').innerText = "Гонка еще не запущена судьей";
+        board.innerHTML = '<div style="color:#444;text-align:center;margin-top:50px;font-size:20px;">Нет данных для отображения</div>';
+        return;
+    }
+
+    let displayMainTimer = data.mainTimer || "00:00.000";
+    if (data.isRaceRunning) displayMainTimer = displayMainTimer.split('.')[0]; 
+    document.getElementById('main-timer').innerText = displayMainTimer;
+    document.getElementById('main-timer').style.color = data.isRaceRunning ? '#00ffcc' : '#ff0055';
+    
+    let statusMsg = data.isRaceRunning ? `Боевой заезд: ${data.targetLaps} кр.` : 'Заезд завершен / Пауза';
+    if(data.config && data.config.showSession && data.sessionName) statusMsg += ` | Сессия: ${data.sessionName}`;
+    if(data.config && !data.config.autoSortEnabled) statusMsg += ` | (Без автосортировки)`;
+    document.getElementById('session-status').innerText = statusMsg;
+
+    if (data.config && !data.config.showPilots) return; 
+
+    let activePilots = data.pilots.filter(p => p.active === true);
+    if(activePilots.length === 0) {
+        board.innerHTML = '<div style="color:#444;text-align:center;margin-top:50px;font-size:18px;">Нет активных пилотов на трассе</div>';
+        return;
+    }
+
+    // --- ФИЛЬТРАЦИЯ ПИЛОТОВ ДЛЯ UI И КАРТЫ ---
+    let visiblePilots = activePilots;
+    if (favoritePilots.size > 0) {
+        visiblePilots = activePilots.filter(p => favoritePilots.has(p.id));
+    }
+
+    board.innerHTML = '';
+    // Подгоняем высоту доски только под видимых пилотов, чтобы они съезжались красиво
+    board.style.height = (visiblePilots.length * 95) + 'px';
+    
+    // Диоды на карте: скрываем тех, кого нет в "любимчиках"
+    let ledStates = {};
+    visiblePilots.forEach(p => {
+        if (p.gates && mapGates.length > 0 && p.index !== undefined) {
+            p.gates.forEach((g, gIdx) => {
+                if (g.active) {
+                    let markId = mapGates[gIdx]?.mark;
+                    if (markId) {
+                        let isCurrent = (!p.finished && gIdx === p.gateIndex);
+                        ledStates[`led_${markId}_${p.index}`] = { color: p.color, pulse: isCurrent };
+                    }
+                }
+            });
+        }
+    });
+
+    trackMap.querySelectorAll('.led').forEach(led => {
+        let state = ledStates[led.id];
+        if (state) {
+            led.style.background = state.color;
+            led.style.boxShadow = `0 0 10px ${state.color}`;
+            if (state.pulse) {
+                if (!led.classList.contains('pulse-anim')) led.classList.add('pulse-anim');
+            } else {
+                led.classList.remove('pulse-anim');
+            }
+        } else {
+            led.style.background = '#333';
+            led.style.boxShadow = 'none';
+            led.classList.remove('pulse-anim');
+        }
+    });
+
+    // Рисуем карточки только для отфильтрованных пилотов
+    visiblePilots.forEach((p, index) => {
+        const topPos = index * 95; 
+        let isLeaderClass = (index === 0 && p.lap > 0 && !p.dnf && data.config.autoSortEnabled) ? 'leader' : '';
+        let isFav = favoritePilots.has(p.id);
+        
+        let timerColor = "#00ffcc";
+        let statusTxt = `Круг: ${p.lap} / ${data.targetLaps}`;
+        let displayPTime = p.time;
+
+        if (p.dnf) { timerColor = "#ff0055"; statusTxt = "💥 СХОД"; } 
+        else if (p.finished) { timerColor = "#ffcc00"; statusTxt = "🏆 ФИНИШ"; } 
+        else if (data.isRaceRunning) { displayPTime = displayPTime.split('.')[0]; }
+
+        let gatesHtml = '<div class="gate-sequence">';
+        if (p.gates) { p.gates.forEach(g => { let act = g.active ? 'active' : ''; gatesHtml += `<span class="seq-gate ${act}">${g.name}</span>`; }); }
+        gatesHtml += '</div>';
+
+        board.innerHTML += `
+        <div class="pilot-card ${isLeaderClass}" id="card_${p.id}" style="top: ${topPos}px; border-left: 5px solid ${p.color}">
+            <div class="name-block">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-right: 5px;">
+                    <div class="pilot-name" style="color: ${p.color}">${p.name}</div>
+                    <div class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFav('${p.id}')" title="Следить за пилотом">👁️</div>
+                </div>
+                <div class="pilot-reg">ID: ${p.regId}</div>
+            </div>
+            <div class="progress-container">
+                <div class="progress-bar"><div class="progress-fill" style="background: ${p.color}; box-shadow: 0 0 10px ${p.color}; width: ${p.progress}%;"></div></div>
+                <div class="stats-row">
+                    <div style="display:flex; gap:15px; width:220px; flex-shrink:0; align-items:center;">
+                        <div class="pilot-timer" style="color:${timerColor}">${displayPTime}</div>
+                        <div style="color:#fff; font-weight:bold;">${statusTxt}</div>
+                    </div>
+                    ${gatesHtml}
+                    <div style="width:250px; display:flex; justify-content:flex-end; gap:15px; flex-shrink:0;">
+                        <div>Круг:<span style="color:#fff; font-weight:bold; margin-left:5px;">${p.lastLap}</span></div>
+                        <div>Дельта: <span style="margin-left:5px;">${p.deltaHtml}</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    });
+}
+
+// === АВТОНОМНЫЙ ЗВУКОВОЙ МОДУЛЬ ДЛЯ МОНИТОРА ===
+const AudioCtxMonitor = window.AudioContext || window.webkitAudioContext;
+let monAudioCtx;
+let monSoundEnabled = false;
+
+function initMonAudio() {
+    if (!monAudioCtx) monAudioCtx = new AudioCtxMonitor();
+    if (monAudioCtx.state === 'suspended') monAudioCtx.resume();
+}
+
+function playMonTone(freq, dur, vol, type) {
+    if (!monSoundEnabled || !monAudioCtx) return;
+    const osc = monAudioCtx.createOscillator();
+    const gain = monAudioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(monAudioCtx.destination);
+    gain.gain.setValueAtTime(vol, monAudioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, monAudioCtx.currentTime + dur / 1000);
+    osc.start();
+    osc.stop(monAudioCtx.currentTime + dur / 1000);
+}
+
+function toggleMonitorSound() {
+    const btn = document.getElementById('monitorSoundBtn');
+    if (!monSoundEnabled) {
+        initMonAudio();
+        monSoundEnabled = true;
+        btn.style.background = '#00cc00';
+        btn.style.color = 'white';
+        btn.innerText = '🔊 Звук вкл';
+        playMonTone(1000, 100, 0.1, 'sine');
+    } else {
+        monSoundEnabled = false;
+        btn.style.background = '#ffaa00';
+        btn.style.color = '#000';
+        btn.innerText = '🔇 Звук выкл';
+    }
+}
+
+let monInitialLoadDone = false;
+db.ref('liveLogs').once('value', () => { monInitialLoadDone = true; });
+
+db.ref('liveLogs').on('child_added', (snapshot) => {
+    if (!monInitialLoadDone) return;
+    const data = snapshot.val();
+    if (data.type === 'sys' && data.text) {
+        // Пролет ворот (✅) и Финиш (🏆) теперь озвучиваются напрямую логикой гонки (playPilotSound)
+        // Оставляем только системные уведомления
+        if (data.text.includes('⚠️') || data.text.includes('🛑')) playMonTone(300, 300, 0.2, 'sawtooth');
+        else if (data.text.includes('🚀')) playMonTone(800, 200, 0.1, 'square');
+        else if (data.text.includes('🔴')) playMonTone(440, 300, 0.5, 'square'); 
+        else if (data.text.includes('🏁') || data.text.includes('🟢')) playMonTone(880, 600, 0.5, 'square'); 
+    }
+});
+
+function toggleFullScreen() {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        let docEl = document.documentElement;
+        if (docEl.requestFullscreen) docEl.requestFullscreen();
+        else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen(); // Для Safari
+    } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+}
+
+</script>
+</body>
+</html>
