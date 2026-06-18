@@ -180,6 +180,10 @@ let wakeLock = null;
 db.ref('liveMapImage').on('value', (snap) => {
     const m = snap.val();
     if(m && m.image) {
+        
+        // 1. СРАЗУ отдаем картинку в CSS-фон. Движок браузера отрисует её, как только сможет
+        trackMapBg.style.backgroundImage = `url(${m.image})`;
+
         let img = new Image();
         img.onload = () => { 
             trackMap.style.setProperty('--ar', img.naturalWidth / img.naturalHeight);
