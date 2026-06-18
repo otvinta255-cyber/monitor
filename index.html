@@ -144,7 +144,8 @@ body {
     </div>
     <div class="header-controls">
         <button id="fullscreenBtn" class="header-btn" onclick="toggleFullScreen()">⛶ На весь экран</button>
-        <button id="monitorSoundBtn" class="header-btn sound-off" onclick="toggleMonitorSound()">🔇 Звук выкл</button>
+        <button id="monitorVibroBtn" class="header-btn sound-off" onclick="toggleMonitorVibro()">📳 Вибро(ANROID)</button>
+        <button id="monitorSoundBtn" class="header-btn sound-off" onclick="toggleMonitorSound()">🔇 Звук</button>
         <div id="main-timer">00:00</div>
     </div>
 </div>
@@ -174,6 +175,7 @@ const trackMapBg = document.getElementById('specTrackMapBg');
 const trackMap = document.getElementById('specTrackMap');
 
 let mapGates = []; 
+let wakeLock = null;
 
 db.ref('liveMapImage').on('value', (snap) => {
     const m = snap.val();
@@ -399,17 +401,19 @@ function renderBoard() {
     });
 }
 
-// === АВТОНОМНЫЙ ЗВУКОВОЙ МОДУЛЬ ДЛЯ МОНИТОРА ===
+// === АВТОНОМНЫЙ ЗВУКОВОЙ И ВИБРО МОДУЛЬ ДЛЯ МОНИТОРА ===
 const AudioCtxMonitor = window.AudioContext || window.webkitAudioContext;
 let monAudioCtx;
 let monSoundEnabled = false;
+let monVibroEnabled = false;
 
 function initMonAudio() {
     if (!monAudioCtx) monAudioCtx = new AudioCtxMonitor();
     if (monAudioCtx.state === 'suspended') monAudioCtx.resume();
 }
 
-function playMonTone(freq, dur, vol, type) {
+// Обновленная функция с поддержкой точной задержки (delayMs)
+function playMonTone(freq, durMs, vol, type, delayMs = 0) {
     if (!monSoundEnabled || !monAudioCtx) return;
     const osc = monAudioCtx.createOscillator();
     const gain = monAudioCtx.createGain();
@@ -417,10 +421,57 @@ function playMonTone(freq, dur, vol, type) {
     osc.frequency.value = freq;
     osc.connect(gain);
     gain.connect(monAudioCtx.destination);
-    gain.gain.setValueAtTime(vol, monAudioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, monAudioCtx.currentTime + dur / 1000);
-    osc.start();
-    osc.stop(monAudioCtx.currentTime + dur / 1000);
+    
+    // Планируем старт и стоп в абсолютном времени аудио-движка
+    const startTime = monAudioCtx.currentTime + (delayMs / 1000);
+    const stopTime = startTime + (durMs / 1000);
+    
+    gain.gain.setValueAtTime(vol, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, stopTime);
+    
+    osc.start(startTime);
+    osc.stop(stopTime);
+}
+
+// Новая логика: количество коротких импульсов = Индекс пилота + 1
+function playPilotSound(pilotIndex, isFinish) {
+    const beeps = (pilotIndex % 4) + 1; // Индекс 0 = 1 пик, Индекс 3 = 4 пика
+    const beepDur = 40;  // Длина одного импульса (мс)
+    const pauseDur = 60; // Пауза между импульсами (мс)
+    const baseFreq = 880; // Пробивная частота для трели
+    
+    // Генерируем звуковую трель
+    for (let i = 0; i < beeps; i++) {
+        playMonTone(baseFreq, beepDur, 0.1, 'square', i * (beepDur + pauseDur));
+    }
+
+    // Если это финиш — добавляем победный длинный гудок в конце
+    if (isFinish) {
+        const finishDelay = beeps * (beepDur + pauseDur) + 100;
+        playMonTone(1320, 400, 0.15, 'square', finishDelay);
+    }
+
+    // Параллельно запускаем виброотклик
+    triggerVibration(beeps, isFinish);
+}
+
+// Логика формирования паттерна вибрации
+function triggerVibration(beeps, isFinish) {
+    // navigator.vibrate поддерживается на Android, но заблокирован Apple в iOS Safari
+    if (!monVibroEnabled || !navigator.vibrate) return;
+    
+    let pattern = [];
+    for(let i = 0; i < beeps; i++) {
+        pattern.push(40); // 40мс вибрация
+        pattern.push(60); // 60мс тишина
+    }
+    
+    if (isFinish) {
+        pattern.push(100); // пауза перед финалом
+        pattern.push(500); // длинная вибрация на финише
+    }
+    
+    navigator.vibrate(pattern);
 }
 
 function toggleMonitorSound() {
@@ -430,32 +481,34 @@ function toggleMonitorSound() {
         monSoundEnabled = true;
         btn.style.background = '#00cc00';
         btn.style.color = 'white';
-        btn.innerText = '🔊 Звук вкл';
-        playMonTone(1000, 100, 0.1, 'sine');
+        btn.innerText = '🔊 Звук';
+        playMonTone(1000, 100, 0.1, 'sine'); // Тестовый пик
     } else {
         monSoundEnabled = false;
         btn.style.background = '#ffaa00';
         btn.style.color = '#000';
-        btn.innerText = '🔇 Звук выкл';
+        btn.innerText = '🔇 Звук';
     }
 }
 
-let monInitialLoadDone = false;
-db.ref('liveLogs').once('value', () => { monInitialLoadDone = true; });
-
-db.ref('liveLogs').on('child_added', (snapshot) => {
-    if (!monInitialLoadDone) return;
-    const data = snapshot.val();
-    if (data.type === 'sys' && data.text) {
-        // Пролет ворот (✅) и Финиш (🏆) теперь озвучиваются напрямую логикой гонки (playPilotSound)
-        // Оставляем только системные уведомления
-        if (data.text.includes('⚠️') || data.text.includes('🛑')) playMonTone(300, 300, 0.2, 'sawtooth');
-        else if (data.text.includes('🚀')) playMonTone(800, 200, 0.1, 'square');
-        else if (data.text.includes('🔴')) playMonTone(440, 300, 0.5, 'square'); 
-        else if (data.text.includes('🏁') || data.text.includes('🟢')) playMonTone(880, 600, 0.5, 'square'); 
+function toggleMonitorVibro() {
+    const btn = document.getElementById('monitorVibroBtn');
+    if (!monVibroEnabled) {
+        monVibroEnabled = true;
+        btn.style.background = '#00cc00';
+        btn.style.color = 'white';
+        btn.innerText = '📳 Вибро (ANDROID)';
+        requestWakeLock();
+        if (navigator.vibrate) navigator.vibrate(100); // Тестовое вибро при включении
+    } else {
+        monVibroEnabled = false;
+        btn.style.background = '#ffaa00';
+        btn.style.color = '#000';
+        btn.innerText = '📳 Вибро (ANDROID)';
+        requestWakeLock();
+        
     }
-});
-
+}
 function toggleFullScreen() {
     if (!document.fullscreenElement && !document.webkitFullscreenElement) {
         let docEl = document.documentElement;
@@ -466,6 +519,31 @@ function toggleFullScreen() {
         else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
     }
 }
+
+
+
+async function requestWakeLock() {
+    if ('wakeLock' in navigator) {
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('Экран защищен от засыпания');
+            
+            // Если экран заблокировали руками, а потом разблокировали,
+            // блокировку нужно запрашивать заново
+            wakeLock.addEventListener('release', () => {
+                console.log('Удержание экрана снято');
+            });
+        } catch (err) {
+            console.error(`Ошибка Wake Lock: ${err.name}, ${err.message}`);
+        }
+    }
+}
+
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        await requestWakeLock();
+    }
+});
 
 </script>
 </body>
