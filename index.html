@@ -11,11 +11,12 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <style>
+/* 1. Увеличиваем высоту карточки для ПК */
 :root {
     --bg-main: #050505;
     --bg-card: #111;
-    --card-height-pc: 85px;
-    --card-height-mob: 160px; /* Увеличенная высота для мобильной стопки */
+    --card-height-pc: 100px; /* Было 85px, стало 100px */
+    --card-height-mob: 160px; 
 }
 
 body { 
@@ -45,23 +46,62 @@ body {
 .header-btn:hover { background: #333; border-color: #666; }
 .header-btn.sound-off { background: #ffaa00; color: #000; border: none; }
 
-@media (max-width: 900px) {
-    .header { display: flex; flex-direction: column; text-align: center; padding: 15px; }
+/*//ВЕРТИКАЛЬНАЯ АДАПТАЦИЯ (Телефоны)
+//Работает ТОЛЬКО когда телефон держим вертикально */
+@media (max-width: 900px) and (orientation: portrait) {
+    .header { display: flex; flex-direction: column; text-align: center; padding: 15px; gap: 10px; }
     .header-info { align-items: center; }
     .header-controls { justify-content: center; width: 100%; }
-    #main-timer { font-size: 42px; margin: 5px 0; }
+    #main-timer { font-size: 42px; margin: 0; }
+}
+
+/* --- АЛЬБОМНАЯ АДАПТАЦИЯ (Горизонтальное положение) 
+       Срабатывает, когда экран перевернут горизонтально и не слишком высокий */
+@media (max-height: 600px) and (orientation: landscape) {
+    body { padding: 10px; } /* Чуть меньше отступов по бокам для экономии места */
+    
+    .header { 
+        display: flex; flex-wrap: wrap; 
+        padding: 6px 15px; gap: 5px 15px; 
+        margin-bottom: 10px; border-radius: 8px;
+    }
+    
+    /* 1. Текст в одну тонкую строку наверху */
+    .header-info { 
+        width: 100%; flex-direction: row; justify-content: center; align-items: baseline; gap: 15px;
+        border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;
+    }
+    .timer-title { font-size: 11px; margin: 0; }
+    #session-status { margin-top: 0; font-size: 11px; }
+    
+    /* 2. Таймер слева (в одну линию с кнопками) */
+    .header-center { flex: 0 1 auto; text-align: left; }
+    #main-timer { font-size: 28px; margin: 0; } /* Уменьшенный таймер */
+    
+    /* 3. Кнопки справа */
+    .header-controls { flex: 1 1 auto; justify-content: flex-end; gap: 8px; }
+    .header-btn { padding: 6px 10px; font-size: 11px; }
+    
+    /* Делаем саму карту чуть компактнее, чтобы больше места осталось пилотам */
+    #specTrackMap { max-height: 55vh; }
 }
 
 /* --- КОНТЕНТ И КАРТА --- */
-.content-area { display: flex; flex-direction: column; gap: 20px; flex-grow: 1; width: 100%; max-width: 1200px; margin: 0 auto; }
+/* 2. Расширяем центральный контейнер (чтобы не был зажат в 1200px) */
+.content-area { 
+    display: flex; flex-direction: column; gap: 20px; flex-grow: 1; 
+    width: 96%; max-width: 1700px; /* Было 1200px */
+    margin: 0 auto; 
+}
 
 .map-container { 
     width: 100%; display: none; justify-content: center; align-items: center;
     border-radius: 12px; border: 1px solid #222; background: #0a0a0a; padding: 10px; box-sizing: border-box;
 }
+/* 3. Даем карте больше высоты на больших экранах */
 #specTrackMap { 
-    position: relative; width: 100%; max-height: 40vh; 
-    max-width: calc(40vh * var(--ar, 1.7778)); aspect-ratio: var(--ar, 1.7778); margin: 0 auto; 
+    position: relative; width: 100%; max-height: 50vh; /* Было 40vh */
+    max-width: calc(50vh * var(--ar, 1.7778)); aspect-ratio: var(--ar, 1.7778); margin: 0 auto; 
 }
 #specTrackMapBg { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; }
 .gate-marker { position: absolute; width: 60px; transform: translate(-50%, -50%); text-align: center; z-index: 10;}
@@ -79,25 +119,31 @@ body {
 /* --- КАРТОЧКИ ПИЛОТОВ --- */
 .pilots-container { width: 100%; position: relative; transition: height 0.3s; }
 
+/* 4. Перенастраиваем сетку карточки под крупные элементы */
 .pilot-card { 
     background: var(--bg-card); border: 1px solid #222; border-radius: 10px; 
     position: absolute; left: 0; right: 0; box-sizing: border-box;
     height: var(--card-height-pc); transition: top 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
-    display: grid; grid-template-columns: 240px 1fr 200px; gap: 20px; align-items: center; padding: 0 15px;
+    display: grid; 
+    grid-template-columns: 300px 1fr 250px; /* Расширили боковые колонки */
+    gap: 30px; align-items: center; padding: 0 20px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.3);
 }
 .pilot-card.leader { border-color: #00f2ff; box-shadow: 0 0 20px rgba(0, 242, 255, 0.1); }
 
 /* Левый блок: Аватар + Имя */
 .card-left { display: flex; align-items: center; gap: 12px; overflow: hidden; }
+/* 5. Значительно увеличиваем аватар и текст для ПК */
 .pilot-avatar { 
-    width: 50px; height: 50px; border-radius: 8px; border: 2px solid #444; flex-shrink: 0;
+    width: 76px; height: 76px; /* Было 50px */
+    border-radius: 8px; border: 2px solid #444; flex-shrink: 0;
     background-size: cover; background-position: center; background-color: #222;
-    display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; text-shadow: 1px 1px 2px #000;
+    display: flex; align-items: center; justify-content: center; 
+    font-size: 32px; font-weight: bold; text-shadow: 1px 1px 2px #000;
 }
 .pilot-info { display: flex; flex-direction: column; overflow: hidden; }
-.pilot-name { font-size: 18px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-.pilot-reg { font-size: 11px; color: #666; text-transform: uppercase; margin-top: 2px; }
+.pilot-name { font-size: 24px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.pilot-reg { font-size: 13px; color: #666; text-transform: uppercase; margin-top: 2px; }
 .fav-btn { cursor: pointer; opacity: 0.2; transition: 0.2s; font-size: 20px; filter: grayscale(100%); flex-shrink: 0;}
 .fav-btn.active { opacity: 1; filter: grayscale(0%); text-shadow: 0 0 10px #00f2ff; transform: scale(1.1);}
 
@@ -105,14 +151,23 @@ body {
 .card-center { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .progress-bar { width: 100%; height: 8px; background: #000; border-radius: 4px; border: 1px solid #333; overflow: hidden;}
 .progress-fill { height: 100%; width: 0%; transition: width 0.3s ease-out; }
-.gate-sequence { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+/* Умная шкала с затуханием по краям */
+.gate-sequence { 
+    display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; 
+    font-size: 13px; font-weight: bold; font-family: sans-serif; text-transform: uppercase; 
+    padding: 0 40px; align-items: center;
+   
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);
+}
 .gate-sequence::-webkit-scrollbar { display: none; }
-.seq-gate { background: #1a1a1a; color: #555; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap; border: 1px solid #222;}
-.seq-gate.active { background: #222; color: #fff; border-color: #555; box-shadow: inset 0 0 5px rgba(255,255,255,0.1); }
+/* Дизайн ворот: просто текст, без плашек (как у судей) */
+.seq-gate { color: #555; transition: all 0.3s; white-space: nowrap; padding: 2px 4px; }
+.seq-gate.active { color: #fff; text-shadow: 0 0 8px rgba(255,255,255,0.9); }
 
 /* Правый блок: Статистика */
 .card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-.pilot-timer { font-family: monospace; font-size: 22px; font-weight: bold; color: #00ffcc; line-height: 1;}
+.pilot-timer { font-family: monospace; font-size: 28px; font-weight: bold; color: #00ffcc; line-height: 1;}
 .status-badge { font-size: 11px; font-weight: bold; color: #aaa; background: #222; padding: 2px 6px; border-radius: 4px;}
 .stats-mini { font-size: 12px; color: #888; display: flex; gap: 12px; }
 .stats-val { color: #fff; font-weight: bold; margin-left: 4px; }
@@ -172,6 +227,7 @@ let mapGates = [];
 let currentRaceData = null;
 let favoritePilots = new Set();
 let lastPilotState = {};
+let needsScroll = {};
 
 // Динамический расчет высоты карточек
 function getCardSpacing() {
@@ -234,16 +290,20 @@ db.ref('liveRace').on('value', (snapshot) => {
         currentRaceData.pilots.forEach(p => {
             if (p.active) {
                 let prev = lastPilotState[p.id];
-                if (prev) {
-                    let gateChanged = (p.gateIndex !== prev.gateIndex) && p.gateIndex >= 0;
-                    let justFinished = p.finished && !prev.finished;
-                    if (gateChanged || justFinished) {
-                        if (favoritePilots.size === 0 || favoritePilots.has(p.id)) {
-                            playPilotSound(p.index || 0, justFinished);
+                    if (prev) {
+                        let gateChanged = (p.gateIndex !== prev.gateIndex) && p.gateIndex >= 0;
+                        let justFinished = p.finished && !prev.finished;
+    
+                        if (gateChanged || justFinished) {
+                            needsScroll[p.id] = true; // Запоминаем, что нужно сделать автопрокрутку!
+                            if (favoritePilots.size === 0 || favoritePilots.has(p.id)) {
+                                playPilotSound(p.index || 0, justFinished);
+                            }
                         }
-                    }
-                }
-                lastPilotState[p.id] = { gateIndex: p.gateIndex, finished: p.finished };
+                    } else {
+                        needsScroll[p.id] = true; // При первой загрузке страницы тоже отцентруем
+                        }
+                        lastPilotState[p.id] = { gateIndex: p.gateIndex, finished: p.finished };
             }
         });
     }
@@ -272,8 +332,7 @@ function renderBoard() {
     document.getElementById('main-timer').innerText = displayMainTimer;
     document.getElementById('main-timer').style.color = data.isRaceRunning ? '#00ffcc' : '#ff0055';
     
-    let statusMsg = data.isRaceRunning ? `Боевой заезд: ${data.targetLaps} кр.` : 'Заезд завершен / Пауза';
-    if(data.config && data.config.showSession && data.sessionName) statusMsg += ` | Сессия: ${data.sessionName}`;
+    let statusMsg = data.isRaceRunning ? `Боевой заезд: ${data.targetLaps} кр.` : 'Заезд завершен';
     document.getElementById('session-status').innerText = statusMsg;
 
     if (data.config && !data.config.showPilots) return; 
@@ -287,12 +346,10 @@ function renderBoard() {
     let visiblePilots = activePilots;
     if (favoritePilots.size > 0) visiblePilots = activePilots.filter(p => favoritePilots.has(p.id));
 
-    board.innerHTML = '';
-    
-    // Рассчет правильной высоты контейнера для плавной анимации
     const spacing = getCardSpacing();
     board.style.height = (visiblePilots.length * spacing) + 'px';
     
+    // === ОБНОВЛЕНИЕ КАРТЫ (ДИОДЫ) ===
     let ledStates = {};
     visiblePilots.forEach(p => {
         if (p.gates && mapGates.length > 0 && p.index !== undefined) {
@@ -321,11 +378,94 @@ function renderBoard() {
         }
     });
 
+    // 1. УМНАЯ ПРОВЕРКА: Нужна ли полная перерисовка каркаса?
+    let needsFullRebuild = false;
+    if (board.children.length !== visiblePilots.length) {
+        needsFullRebuild = true;
+    } else {
+        visiblePilots.forEach(p => {
+            let card = document.getElementById('card_' + p.id);
+            if (!card) needsFullRebuild = true;
+            else {
+                let seq = card.querySelector('.gate-sequence');
+                if (seq && p.gates && seq.children.length !== p.gates.length) needsFullRebuild = true;
+            }
+        });
+    }
+
+    // 2. СОЗДАНИЕ КАРКАСА (Выполняется ТОЛЬКО при загрузке или изменении числа пилотов/меток)
+    if (needsFullRebuild) {
+        let newBoardHtml = '';
+        visiblePilots.forEach((p, index) => {
+            const topPos = index * spacing; 
+            let gatesHtml = '';
+            if (p.gates) { p.gates.forEach(g => { gatesHtml += `<span class="seq-gate">${g.name}</span>`; }); }
+
+            newBoardHtml += `
+            <div class="pilot-card" id="card_${p.id}" style="top: ${topPos}px;">
+                <div class="card-left">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div class="pilot-avatar"></div>
+                        <div class="pilot-info">
+                            <div class="pilot-name"></div>
+                            <div class="pilot-reg"></div>
+                        </div>
+                    </div>
+                    <div class="fav-btn" onclick="toggleFav('${p.id}')">👁️</div>
+                </div>
+                <div class="card-center">
+                    <div class="progress-bar"><div class="progress-fill"></div></div>
+                    <div class="gate-sequence">${gatesHtml}</div>
+                </div>
+                <div class="card-right">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div class="status-badge"></div>
+                        <div class="pilot-timer"></div>
+                    </div>
+                    <div class="stats-mini">
+                        <div>Кр: <span class="stats-val last-lap-val"></span></div>
+                        <div>Δ: <span class="stats-val delta-val"></span></div>
+                    </div>
+                </div>
+            </div>`;
+        });
+        board.innerHTML = newBoardHtml;
+    }
+
+    // 3. ХИРУРГИЧЕСКОЕ ОБНОВЛЕНИЕ ДАННЫХ (Выполняется каждую секунду, не ломает скролл!)
     visiblePilots.forEach((p, index) => {
-        const topPos = index * spacing; 
-        let isLeaderClass = (index === 0 && p.lap > 0 && !p.dnf && data.config.autoSortEnabled) ? 'leader' : '';
-        let isFav = favoritePilots.has(p.id);
+        const card = document.getElementById('card_' + p.id);
+        if (!card) return;
+
+        // Позиция, цвета и класс лидера
+        card.style.top = (index * spacing) + 'px';
+        card.style.borderLeftColor = p.color;
+        if (index === 0 && p.lap > 0 && !p.dnf && data.config.autoSortEnabled) card.classList.add('leader');
+        else card.classList.remove('leader');
+
+        // Фото и Имя
+        let avatar = card.querySelector('.pilot-avatar');
+        if (p.photo) {
+            avatar.style.backgroundImage = `url('${p.photo}')`;
+            avatar.innerText = '';
+        } else {
+            avatar.style.backgroundImage = 'none';
+            avatar.innerText = p.name.charAt(0);
+        }
+        avatar.style.borderColor = p.color;
+        avatar.style.color = p.color;
         
+        let nameEl = card.querySelector('.pilot-name');
+        if(nameEl.innerText !== p.name) nameEl.innerText = p.name;
+        nameEl.style.color = p.color;
+        
+        let regEl = card.querySelector('.pilot-reg');
+        if(regEl.innerText !== p.regId) regEl.innerText = p.regId;
+        
+        let favBtn = card.querySelector('.fav-btn');
+        if(favoritePilots.has(p.id)) favBtn.classList.add('active'); else favBtn.classList.remove('active');
+
+        // Математика прогресса и времени
         let timerColor = "#00ffcc";
         let statusTxt = `Круг: ${p.lap} / ${data.targetLaps}`;
         let displayPTime = p.time;
@@ -334,50 +474,62 @@ function renderBoard() {
         else if (p.finished) { timerColor = "#ffcc00"; statusTxt = "ФИНИШ"; } 
         else if (data.isRaceRunning) { displayPTime = displayPTime.split('.')[0]; }
 
-        let gatesHtml = '';
-        if (p.gates) { p.gates.forEach(g => { let act = g.active ? 'active' : ''; gatesHtml += `<span class="seq-gate ${act}">${g.name}</span>`; }); }
+        let totalGatesInList = p.gates ? p.gates.length : 1; 
+        let tLaps = data.targetLaps || 1;
+        let lapForMath = p.lap > 0 ? p.lap - 1 : 0;
+        let passedGates = p.gateIndex !== undefined ? Math.max(0, p.gateIndex + 1) : 0;
+        
+        let realProgress = (((lapForMath * totalGatesInList) + passedGates) / (tLaps * totalGatesInList)) * 100;
+        if (p.finished) realProgress = 100;
+        if (realProgress > 100) realProgress = 100;
+        if (realProgress < 0) realProgress = 0;
 
-        // Фото пилота или заглушка
-        let photoHtml = p.photo 
-            ? `<div class="pilot-avatar" style="background-image: url('${p.photo}'); border-color: ${p.color}"></div>` 
-            : `<div class="pilot-avatar" style="border-color: ${p.color}; color: ${p.color}">${p.name.charAt(0)}</div>`;
-
-        // Очистка дельты от html тегов для компактного вида, если нужно, но мы оставим стили из базы
         let cleanDelta = p.deltaHtml.includes("delta-worse") ? `<span class="delta-worse">${p.deltaHtml.replace(/(<([^>]+)>)/gi, "")}</span>` 
                        : p.deltaHtml.includes("delta-better") ? `<span class="delta-better">${p.deltaHtml.replace(/(<([^>]+)>)/gi, "")}</span>` 
                        : `<span style="color:#aaa;">0.00</span>`;
 
-        board.innerHTML += `
-        <div class="pilot-card ${isLeaderClass}" id="card_${p.id}" style="top: ${topPos}px; border-left: 5px solid ${p.color}">
-            
-            <div class="card-left">
-                <div style="display:flex; align-items:center; gap:12px;">
-                    ${photoHtml}
-                    <div class="pilot-info">
-                        <div class="pilot-name" style="color: ${p.color}">${p.name}</div>
-                        <div class="pilot-reg">${p.regId}</div>
-                    </div>
-                </div>
-                <div class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFav('${p.id}')">👁️</div>
-            </div>
+        // Вставка текста и стилей (без пересоздания HTML тегов)
+        let badge = card.querySelector('.status-badge');
+        if(badge.innerText !== statusTxt) badge.innerText = statusTxt;
+        
+        let timerEl = card.querySelector('.pilot-timer');
+        if(timerEl.innerText !== displayPTime) timerEl.innerText = displayPTime;
+        timerEl.style.color = timerColor;
 
-            <div class="card-center">
-                <div class="progress-bar"><div class="progress-fill" style="background: ${p.color}; box-shadow: 0 0 10px ${p.color}; width: ${p.progress}%;"></div></div>
-                <div class="gate-sequence">${gatesHtml}</div>
-            </div>
+        let prog = card.querySelector('.progress-fill');
+        prog.style.width = realProgress + '%';
+        prog.style.background = p.color;
+        prog.style.boxShadow = `0 0 10px ${p.color}`;
 
-            <div class="card-right">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <div class="status-badge">${statusTxt}</div>
-                    <div class="pilot-timer" style="color:${timerColor}">${displayPTime}</div>
-                </div>
-                <div class="stats-mini">
-                    <div>Кр: <span class="stats-val">${p.lastLap}</span></div>
-                    <div>Δ: <span class="stats-val">${cleanDelta}</span></div>
-                </div>
-            </div>
+        let ll = card.querySelector('.last-lap-val');
+        if(ll && ll.innerText !== p.lastLap) ll.innerText = p.lastLap;
+        
+        let deltaVal = card.querySelector('.delta-val');
+        if(deltaVal && deltaVal.innerHTML !== cleanDelta) deltaVal.innerHTML = cleanDelta;
 
-        </div>`;
+        // Включение/Отключение "загоревшихся" точек
+        let gateSpans = card.querySelectorAll('.seq-gate');
+        if (p.gates && gateSpans.length === p.gates.length) {
+            p.gates.forEach((g, gIdx) => {
+                if (g.active) gateSpans[gIdx].classList.add('active');
+                else gateSpans[gIdx].classList.remove('active');
+            });
+        }
+    });
+
+    // 4. ПЛАВНАЯ АВТОПРОКРУТКА (Срабатывает ТОЛЬКО при физическом взятии новой точки)
+    document.querySelectorAll('.pilot-card').forEach(card => {
+        let pid = card.id.replace('card_', '');
+        if (needsScroll[pid]) {
+            let seq = card.querySelector('.gate-sequence');
+            if(seq) {
+                const activeGates = seq.querySelectorAll('.seq-gate.active');
+                if (activeGates.length > 0) {
+                    activeGates[activeGates.length - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+            }
+            needsScroll[pid] = false; 
+        }
     });
 }
 
@@ -417,15 +569,25 @@ function toggleMonitorSound() {
         initMonAudio(); monSoundEnabled = true;
         btn.style.background = '#00cc00'; btn.style.color = 'white'; btn.innerText = '🔊 Звук';
         playMonTone(1000, 100, 0.1, 'sine');
-    } else { monSoundEnabled = false; btn.style.background = '#ffaa00'; btn.style.color = '#000'; btn.innerText = '🔇 Звук'; }
+        requestWakeLock(); // Теперь Звук тоже запускает удержание экрана!
+    } else { 
+        monSoundEnabled = false; 
+        btn.style.background = '#ffaa00'; btn.style.color = '#000'; btn.innerText = '🔇 Звук'; 
+        requestWakeLock(); 
+    }
 }
 
 function toggleMonitorVibro() {
     const btn = document.getElementById('monitorVibroBtn');
     if (!monVibroEnabled) {
         monVibroEnabled = true; btn.style.background = '#00cc00'; btn.style.color = 'white'; btn.innerText = '📳 Вибро';
-        requestWakeLock(); if (navigator.vibrate) navigator.vibrate(100);
-    } else { monVibroEnabled = false; btn.style.background = '#ffaa00'; btn.style.color = '#000'; btn.innerText = '📳 Вибро'; requestWakeLock(); }
+        requestWakeLock(); 
+        if (navigator.vibrate) navigator.vibrate(100);
+    } else { 
+        monVibroEnabled = false; 
+        btn.style.background = '#ffaa00'; btn.style.color = '#000'; btn.innerText = '📳 Вибро'; 
+        requestWakeLock(); 
+    }
 }
 
 function toggleFullScreen() {
@@ -437,14 +599,37 @@ function toggleFullScreen() {
     }
 }
 
+// === НАДЕЖНЫЙ WAKELOCK (Исправлено) ===
 let wakeLock = null;
+
 async function requestWakeLock() {
     if ('wakeLock' in navigator) {
-        try { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { console.log('Удержание снято'); }); } 
-        catch (err) { console.error(`Ошибка Wake Lock: ${err.message}`); }
+        try {
+            // Если экран уже удерживается, сначала сбросим старое удержание, чтобы не было конфликтов
+            if (wakeLock !== null) {
+                await wakeLock.release();
+                wakeLock = null;
+            }
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => { 
+                wakeLock = null; // Правильно очищаем переменную
+                console.log('Удержание экрана снято'); 
+            });
+            console.log('Экран защищен от засыпания');
+        } catch (err) { 
+            console.error(`Ошибка Wake Lock: ${err.message}`); 
+        }
     }
 }
-document.addEventListener('visibilitychange', async () => { if (wakeLock !== null && document.visibilityState === 'visible') await requestWakeLock(); });
+
+// Если зритель свернул браузер (ответил в телеграме) и вернулся, 
+// браузер автоматически снимает защиту. Эта логика восстановит ее,
+// но ТОЛЬКО если человек до этого нажал Вибро или Звук.
+document.addEventListener('visibilitychange', async () => { 
+    if (document.visibilityState === 'visible' && (monSoundEnabled || monVibroEnabled)) {
+        await requestWakeLock(); 
+    } 
+});
 </script>
 </body>
 </html>
