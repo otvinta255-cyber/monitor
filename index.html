@@ -300,22 +300,28 @@ db.ref('liveRace').on('value', (snapshot) => {
         if (currentRaceData.pilots) {
             currentRaceData.pilots.forEach(p => {
                 if (p.active) {
-                let prev = lastPilotState[p.id];
+                    let prev = lastPilotState[p.id];
                     if (prev) {
                         let gateChanged = (p.gateIndex !== prev.gateIndex) && p.gateIndex >= 0;
                         let justFinished = p.finished && !prev.finished;
-    
-                        if (gateChanged || justFinished) {
-                            needsScroll[p.id] = true; // Запоминаем, что нужно сделать автопрокрутку!
-                            if (favoritePilots.size === 0 || favoritePilots.has(p.id)) {
-                                playPilotSound(p.index || 0, justFinished);
-                            }
+                        let justDnf = p.dnf && !prev.dnf; // Ловим момент схода (DNF)
+
+                        if (justFinished) {
+                            needsScroll[p.id] = true; 
+                            if (favoritePilots.size === 0 || favoritePilots.has(p.id)) playVictorySound();
+                        } else if (justDnf) {
+                            // Прокрутка при сходе не нужна, просто играем грустную мелодию
+                            if (favoritePilots.size === 0 || favoritePilots.has(p.id)) playMarioDeathSound();
+                        } else if (gateChanged) {
+                            needsScroll[p.id] = true; 
+                            if (favoritePilots.size === 0 || favoritePilots.has(p.id)) playPilotSound(p.index || 0);
                         }
                     } else {
-                        needsScroll[p.id] = true; // При первой загрузке страницы тоже отцентруем
-                        }
-                        lastPilotState[p.id] = { gateIndex: p.gateIndex, finished: p.finished };
+                        needsScroll[p.id] = true; 
+                    }
                     
+                    // Обязательно сохраняем состояние DNF, чтобы звук не играл каждую секунду
+                    lastPilotState[p.id] = { gateIndex: p.gateIndex, finished: p.finished, dnf: p.dnf };
                 }
             });
         }
@@ -582,11 +588,37 @@ function playMonitorCountdown() {
     setTimeout(() => playMonTone(880, 1600, 0.15, 'square'), 3250);
 }
 
-function playPilotSound(pilotIndex, isFinish) {
+function playPilotSound(pilotIndex) {
     const beeps = (pilotIndex % 4) + 1; const beepDur = 40; const pauseDur = 60; const baseFreq = 880; 
     for (let i = 0; i < beeps; i++) playMonTone(baseFreq, beepDur, 0.1, 'square', i * (beepDur + pauseDur));
-    if (isFinish) playMonTone(1320, 400, 0.15, 'square', beeps * (beepDur + pauseDur) + 100);
-    triggerVibration(beeps, isFinish);
+    // Больше здесь не нужен звук финиша, мы вынесли его отдельно!
+    triggerVibration(beeps, false);
+}
+
+function playVictorySound() {
+    if (monSoundEnabled) {
+        setTimeout(() => playMonTone(523.25, 150, 0.4, 'triangle'), 0);
+        setTimeout(() => playMonTone(659.25, 150, 0.4, 'triangle'), 150);
+        setTimeout(() => playMonTone(783.99, 150, 0.4, 'triangle'), 300);
+        setTimeout(() => playMonTone(1046.50, 800, 0.4, 'triangle'), 450); // Финальная нота долгая!
+    }
+    if (monVibroEnabled && navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 400]);
+}
+
+// 8-битный звук схода с трассы (С БРЯКОМ!)
+function playMarioDeathSound() {
+    if (monSoundEnabled) {
+        const type = 'square';
+        const vol = 0.2;
+        // Тот самый "Бряк" (быстрый диссонанс/трель из двух нот одновременно)
+        setTimeout(() => playMonTone(493.88, 60, vol, type), 0);   // Си
+        setTimeout(() => playMonTone(349.23, 60, vol, type), 0);   // Фа
+        setTimeout(() => playMonTone(493.88, 60, vol, type), 60); 
+        setTimeout(() => playMonTone(349.23, 60, vol, type), 60); 
+        setTimeout(() => playMonTone(493.88, 80, vol, type), 120); 
+        setTimeout(() => playMonTone(349.23, 80, vol, type), 120); 
+    }
+    if (monVibroEnabled && navigator.vibrate) navigator.vibrate([200, 100, 400]);
 }
 
 function triggerVibration(beeps, isFinish) {
