@@ -228,7 +228,7 @@ let currentRaceData = null;
 let favoritePilots = new Set();
 let lastPilotState = {};
 let needsScroll = {};
-let wasRaceRunning = false;
+let lastStartSequence = 0;
 
 // Динамический расчет высоты карточек
 function getCardSpacing() {
@@ -288,14 +288,18 @@ window.toggleFav = function(pid) {
 db.ref('liveRace').on('value', (snapshot) => {
     currentRaceData = snapshot.val();
     // === ВОЗВРАЩАЕМ ЗВУК СТАРТА ===
-        if (currentRaceData.isRaceRunning && !wasRaceRunning) {
-            if (monSoundEnabled) playMonTone(880, 1600, 0.15, 'square'); // Длинный гудок старта
+        if (currentRaceData) {
+        
+        // === ЗАПУСК ОТСЧЕТА У ЗРИТЕЛЕЙ ===
+        if (currentRaceData.startSequence && currentRaceData.startSequence !== lastStartSequence) {
+            lastStartSequence = currentRaceData.startSequence;
+            playMonitorCountdown();
         }
-        wasRaceRunning = currentRaceData.isRaceRunning;
-        // ===============================
-    if (currentRaceData && currentRaceData.pilots) {
-        currentRaceData.pilots.forEach(p => {
-            if (p.active) {
+        // =================================
+
+        if (currentRaceData.pilots) {
+            currentRaceData.pilots.forEach(p => {
+                if (p.active) {
                 let prev = lastPilotState[p.id];
                     if (prev) {
                         let gateChanged = (p.gateIndex !== prev.gateIndex) && p.gateIndex >= 0;
@@ -311,8 +315,10 @@ db.ref('liveRace').on('value', (snapshot) => {
                         needsScroll[p.id] = true; // При первой загрузке страницы тоже отцентруем
                         }
                         lastPilotState[p.id] = { gateIndex: p.gateIndex, finished: p.finished };
-            }
-        });
+                    
+                }
+            });
+        }
     }
     renderBoard();
 });
@@ -553,6 +559,27 @@ function playMonTone(freq, durMs, vol, type, delayMs = 0) {
     const startTime = monAudioCtx.currentTime + (delayMs / 1000); const stopTime = startTime + (durMs / 1000);
     gain.gain.setValueAtTime(vol, startTime); gain.gain.exponentialRampToValueAtTime(0.001, stopTime);
     osc.start(startTime); osc.stop(stopTime);
+}
+
+// === НОВАЯ ФУНКЦИЯ: ПОЛНЫЙ ОТСЧЕТ ДЛЯ ЗРИТЕЛЕЙ ===
+function playMonitorCountdown() {
+    if (!monSoundEnabled || !monAudioCtx) return;
+    
+    // Прогреваем динамик телефона, чтобы не "проглотил" первый звук
+    if (monAudioCtx.state === 'suspended') monAudioCtx.resume();
+    const dummyOsc = monAudioCtx.createOscillator();
+    const dummyGain = monAudioCtx.createGain();
+    dummyGain.gain.value = 0.001;
+    dummyOsc.connect(dummyGain);
+    dummyGain.connect(monAudioCtx.destination);
+    dummyOsc.start();
+    dummyOsc.stop(monAudioCtx.currentTime + 0.05);
+
+    // Точное расписание звуков: 3, 2, 1, СТАРТ!
+    setTimeout(() => playMonTone(440, 300, 0.15, 'square'), 250);
+    setTimeout(() => playMonTone(440, 300, 0.15, 'square'), 1250);
+    setTimeout(() => playMonTone(440, 300, 0.15, 'square'), 2250);
+    setTimeout(() => playMonTone(880, 1600, 0.15, 'square'), 3250);
 }
 
 function playPilotSound(pilotIndex, isFinish) {
