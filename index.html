@@ -125,8 +125,8 @@ body {
     position: absolute; left: 0; right: 0; box-sizing: border-box;
     height: var(--card-height-pc); transition: top 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
     display: grid; 
-    grid-template-columns: 300px 1fr 250px; /* Расширили боковые колонки */
-    gap: 30px; align-items: center; padding: 0 20px;
+    grid-template-columns: 320px 1fr 240px; /* Расширили боковые колонки */
+    gap: 15px; align-items: center; padding: 0 20px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.3);
 }
 .pilot-card.leader { border-color: #00f2ff; box-shadow: 0 0 20px rgba(0, 242, 255, 0.1); }
@@ -135,7 +135,7 @@ body {
 .card-left { display: flex; align-items: center; gap: 12px; overflow: hidden; }
 /* 5. Значительно увеличиваем аватар и текст для ПК */
 .pilot-avatar { 
-    width: 76px; height: 76px; /* Было 50px */
+    width: 88px; height: 88px; /* Было 50px */
     border-radius: 8px; border: 2px solid #444; flex-shrink: 0;
     background-size: cover; background-position: center; background-color: #222;
     display: flex; align-items: center; justify-content: center; 
@@ -177,12 +177,12 @@ body {
 @media (max-width: 800px) {
     .pilot-card {
         height: var(--card-height-mob); grid-template-columns: 1fr; grid-template-rows: auto auto auto; 
-        gap: 12px; padding: 12px 15px; align-items: start;
+        gap: 8px; padding: 8px 10px; align-items: start;
     }
     .card-left { width: 100%; justify-content: space-between; }
     .card-center { width: 100%; }
     .card-right { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; border-top: 1px solid #222; padding-top: 8px;}
-    .pilot-avatar { width: 40px; height: 40px; font-size: 20px;}
+    .pilot-avatar { width: 60px; height: 60px; font-size: 20px;}
     .pilot-name { font-size: 16px; }
     .pilot-timer { font-size: 18px; }
 }
