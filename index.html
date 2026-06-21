@@ -304,15 +304,18 @@ db.ref('liveRace').on('value', (snapshot) => {
                     if (prev) {
                         let gateChanged = (p.gateIndex !== prev.gateIndex) && p.gateIndex >= 0;
                         let justFinished = p.finished && !prev.finished;
-                        let justDnf = p.dnf && !prev.dnf; // Ловим момент схода (DNF)
+                        let justDnf = p.dnf && !prev.dnf;
 
-                        if (justFinished) {
+                        // СНАЧАЛА проверяем на сход (так как при сходе finished тоже true)
+                        if (justDnf) {
+                            if (favoritePilots.size === 0 || favoritePilots.has(p.id)) playMarioDeathSound();
+                        } 
+                        // И ТОЛЬКО ЕСЛИ это обычный финиш без схода — играем фанфары
+                        else if (justFinished) {
                             needsScroll[p.id] = true; 
                             if (favoritePilots.size === 0 || favoritePilots.has(p.id)) playVictorySound();
-                        } else if (justDnf) {
-                            // Прокрутка при сходе не нужна, просто играем грустную мелодию
-                            if (favoritePilots.size === 0 || favoritePilots.has(p.id)) playMarioDeathSound();
-                        } else if (gateChanged) {
+                        } 
+                        else if (gateChanged) {
                             needsScroll[p.id] = true; 
                             if (favoritePilots.size === 0 || favoritePilots.has(p.id)) playPilotSound(p.index || 0);
                         }
@@ -498,8 +501,14 @@ function renderBoard() {
         let lapForMath = p.lap > 0 ? p.lap - 1 : 0;
         let passedGates = p.gateIndex !== undefined ? Math.max(0, p.gateIndex + 1) : 0;
         
+        // СТАЛО (Добавили условие && !p.dnf):
         let realProgress = (((lapForMath * totalGatesInList) + passedGates) / (tLaps * totalGatesInList)) * 100;
-        if (p.finished) realProgress = 100;
+
+        // Заливаем до 100% ТОЛЬКО если это успешный финиш (без схода)
+        if (p.finished && !p.dnf) realProgress = 100; 
+
+        if (realProgress > 100) realProgress = 100;
+        if (realProgress < 0) realProgress = 0;
         if (realProgress > 100) realProgress = 100;
         if (realProgress < 0) realProgress = 0;
 
