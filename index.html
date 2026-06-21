@@ -228,6 +228,7 @@ let currentRaceData = null;
 let favoritePilots = new Set();
 let lastPilotState = {};
 let needsScroll = {};
+let wasRaceRunning = false;
 
 // Динамический расчет высоты карточек
 function getCardSpacing() {
@@ -286,6 +287,12 @@ window.toggleFav = function(pid) {
 
 db.ref('liveRace').on('value', (snapshot) => {
     currentRaceData = snapshot.val();
+    // === ВОЗВРАЩАЕМ ЗВУК СТАРТА ===
+        if (currentRaceData.isRaceRunning && !wasRaceRunning) {
+            if (monSoundEnabled) playMonTone(880, 1600, 0.15, 'square'); // Длинный гудок старта
+        }
+        wasRaceRunning = currentRaceData.isRaceRunning;
+        // ===============================
     if (currentRaceData && currentRaceData.pilots) {
         currentRaceData.pilots.forEach(p => {
             if (p.active) {
