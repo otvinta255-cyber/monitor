@@ -338,7 +338,13 @@ function renderBoard() {
 
     if (data.config) {
         document.getElementById('spec-header-title').innerText = data.config.header || "LIVE РЕЗУЛЬТАТЫ";
-        document.getElementById('session-status').style.display = data.config.showSession ? 'block' : 'none';
+        
+        // Галочка теперь прячет/показывает главный текстовый заголовок
+        document.getElementById('spec-header-title').style.display = data.config.showSession ? 'block' : 'none';
+        
+        // А статус гонки (старт/финиш/круги) теперь отображается ВСЕГДА
+        document.getElementById('session-status').style.display = 'block'; 
+        
         board.style.display = data.config.showPilots ? 'block' : 'none';
         mapBox.style.display = data.config.showMap ? 'flex' : 'none';
     }
@@ -354,7 +360,7 @@ function renderBoard() {
     document.getElementById('main-timer').innerText = displayMainTimer;
     document.getElementById('main-timer').style.color = data.isRaceRunning ? '#00ffcc' : '#ff0055';
     
-    let statusMsg = data.isRaceRunning ? `Боевой заезд: ${data.targetLaps} кр.` : 'Заезд завершен';
+    let statusMsg = data.isRaceRunning ? `идет заезд: ${data.targetLaps} кр.` : 'Заезд завершен';
     document.getElementById('session-status').innerText = statusMsg;
 
     if (data.config && !data.config.showPilots) return; 
