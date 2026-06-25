@@ -15,8 +15,8 @@
 :root {
     --bg-main: #050505;
     --bg-card: #111;
-    --card-height-pc: 100px; /* Было 85px, стало 100px */
-    --card-height-mob: 160px; 
+    --card-height-pc: 115px; 
+    --card-height-mob: 245px; /* Было 185px, стало 220px */
 }
 
 body { 
@@ -96,7 +96,7 @@ body {
 
 .map-container { 
     width: 100%; display: none; justify-content: center; align-items: center;
-    border-radius: 12px; border: 1px solid #222; background: #0a0a0a; padding: 10px; box-sizing: border-box;
+    border-radius: 12px; border: 1px solid #222; background: #0a0a0a; padding: 5px; box-sizing: border-box;
 }
 /* 3. Даем карте больше высоты на больших экранах */
 #specTrackMap { 
@@ -115,6 +115,14 @@ body {
     100% { transform: scale(1); filter: brightness(1); }
 }
 .pulse-anim { animation: pulseGate 1s infinite; }
+
+@keyframes pulseLive {
+    0% { opacity: 1; }
+    50% { opacity: 0.3; text-shadow: 0 0 8px #00ff00; }
+    100% { opacity: 1; }
+}
+.live-speed-text { animation: pulseLive 1.5s infinite; color: #00ff00; font-weight: bold; }
+.limit-speed-text { color: #ff0055 !important; animation: none; text-shadow: 0 0 5px #ff0055; font-weight: bold; }
 
 /* --- КАРТОЧКИ ПИЛОТОВ --- */
 .pilots-container { width: 100%; position: relative; transition: height 0.3s; }
@@ -153,7 +161,7 @@ body {
 .progress-fill { height: 100%; width: 0%; transition: width 0.3s ease-out; }
 /* Умная шкала с затуханием по краям */
 .gate-sequence { 
-    display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; 
+    display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; 
     font-size: 13px; font-weight: bold; font-family: sans-serif; text-transform: uppercase; 
     padding: 0 40px; align-items: center;
    
@@ -162,8 +170,23 @@ body {
 }
 .gate-sequence::-webkit-scrollbar { display: none; }
 /* Дизайн ворот: просто текст, без плашек (как у судей) */
-.seq-gate { color: #555; transition: all 0.3s; white-space: nowrap; padding: 2px 4px; }
+.seq-gate { 
+    color: #555; transition: all 0.3s; white-space: nowrap; padding: 2px 2px;
+    position: relative; display: inline-flex; flex-direction: column; justify-content: flex-end; align-items: center;
+    height: 30px; min-width: 18px; overflow: hidden; vertical-align: bottom;
+}
 .seq-gate.active { color: #fff; text-shadow: 0 0 8px rgba(255,255,255,0.9); }
+.seq-gate-text { position: relative; z-index: 1; pointer-events: none; margin-bottom: 2px; }
+.speed-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    opacity: 0.4; transition: height 0.3s;
+    z-index: 0; border-radius: 2px;
+}
+
+.seq-gate.finish-gate {
+    min-width: 45px !important; /* Фиксируем ширину именно для финиша */
+    font-weight: 900 !important;
+}
 
 /* Правый блок: Статистика */
 .card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
@@ -176,12 +199,15 @@ body {
 /* --- МОБИЛЬНАЯ АДАПТАЦИЯ КАРТОЧКИ --- */
 @media (max-width: 800px) {
     .pilot-card {
-        height: var(--card-height-mob); grid-template-columns: 1fr; grid-template-rows: auto auto auto; 
-        gap: 8px; padding: 8px 10px; align-items: start;
+        height: var(--card-height-mob); 
+        grid-template-columns: 1fr; 
+        grid-template-rows: max-content max-content max-content; /* max-content не даст рядам наехать друг на друга */
+        gap: 12px; padding: 12px; align-items: start;
     }
     .card-left { width: 100%; justify-content: space-between; }
     .card-center { width: 100%; }
-    .card-right { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; border-top: 1px solid #222; padding-top: 8px;}
+    .card-right { width: 100%; flex-direction: column; align-items: stretch; border-top: 1px solid #222; padding-top: 8px;}
+    .card-right > div:first-child { display: flex; justify-content: space-between; width: 100%; align-items: center; }
     .pilot-avatar { width: 60px; height: 60px; font-size: 20px;}
     .pilot-name { font-size: 16px; }
     .pilot-timer { font-size: 18px; }
@@ -195,8 +221,13 @@ body {
         <div class="timer-title" id="spec-header-title">LIVE РЕЗУЛЬТАТЫ ГОНКИ</div>
         <div id="session-status">Ожидание загрузки...</div>
     </div>
-    <div class="header-center">
+   <div class="header-center" style="display: flex; flex-direction: column; align-items: center;">
         <div id="main-timer">00:00</div>
+        <div style="display: flex; gap: 10px; font-size: 11px; color: #aaa; margin-top: 5px; font-weight: bold; flex-wrap: wrap; justify-content: center;">
+            <label style="cursor:pointer; display:flex; align-items:center; gap:3px;"><input type="checkbox" id="voiceLapCb" style="accent-color:#00f2ff;">🗣 Время</label>
+            <label style="cursor:pointer; display:flex; align-items:center; gap:3px;"><input type="checkbox" id="voiceSpeedCb" style="accent-color:#00f2ff;">🗣 Скорость</label>
+            <label style="cursor:pointer; display:flex; align-items:center; gap:3px;"><input type="checkbox" id="voiceDeltaCb" style="accent-color:#00f2ff;">🗣 Дельта</label>
+        </div>
     </div>
     <div class="header-controls">
         <button id="fullscreenBtn" class="header-btn" onclick="toggleFullScreen()">⛶ На весь экран</button>
@@ -232,7 +263,7 @@ let lastStartSequence = 0;
 
 // Динамический расчет высоты карточек
 function getCardSpacing() {
-    return window.innerWidth <= 800 ? 175 : 100; // Высота карточки + отступ (margin/gap)
+    return window.innerWidth <= 800 ? 255 : 130; 
 }
 
 // Перерисовка при изменении размера окна (чтобы карточки не наезжали друг на друга)
@@ -302,29 +333,43 @@ db.ref('liveRace').on('value', (snapshot) => {
                 if (p.active) {
                     let prev = lastPilotState[p.id];
                     if (prev) {
-                        let gateChanged = (p.gateIndex !== prev.gateIndex) && p.gateIndex >= 0;
+                        // Точно определяем, круг это или обычная метка
+                        let lapChanged = (p.lap > (prev.lap || 0)); 
+                        let gateChanged = (p.gateIndex !== prev.gateIndex) && p.gateIndex > 0; 
                         let justFinished = p.finished && !prev.finished;
                         let justDnf = p.dnf && !prev.dnf;
 
-                        // СНАЧАЛА проверяем на сход (так как при сходе finished тоже true)
                         if (justDnf) {
                             if (favoritePilots.size === 0 || favoritePilots.has(p.id)) playMarioDeathSound();
                         } 
-                        // И ТОЛЬКО ЕСЛИ это обычный финиш без схода — играем фанфары
                         else if (justFinished) {
                             needsScroll[p.id] = true; 
-                            if (favoritePilots.size === 0 || favoritePilots.has(p.id)) playVictorySound();
+                            if (favoritePilots.size === 0 || favoritePilots.has(p.id)) {
+                                playVictorySound();
+                                speakPilotStats(p, true, true); // Добавлен вызов голоса для финиша
+                            }
                         } 
+                        // Новый круг!
+                        else if (lapChanged) {
+                            needsScroll[p.id] = true;
+                            if (favoritePilots.size === 0 || favoritePilots.has(p.id)) {
+                                playLapSound(p.index || 0); // Новый звонкий звук
+                                speakPilotStats(p, true);   // Озвучиваем итоги круга
+                            }
+                        }
+                        // Обычная метка сектора
                         else if (gateChanged) {
                             needsScroll[p.id] = true; 
-                            if (favoritePilots.size === 0 || favoritePilots.has(p.id)) playPilotSound(p.index || 0);
+                            if (favoritePilots.size === 0 || favoritePilots.has(p.id)) {
+                                playPilotSound(p.index || 0); // Стандартный звук
+                                speakPilotStats(p, false);    // Озвучиваем только скорость (если включена)
+                            }
                         }
                     } else {
                         needsScroll[p.id] = true; 
                     }
                     
-                    // Обязательно сохраняем состояние DNF, чтобы звук не играл каждую секунду
-                    lastPilotState[p.id] = { gateIndex: p.gateIndex, finished: p.finished, dnf: p.dnf };
+                    lastPilotState[p.id] = { gateIndex: p.gateIndex, lap: p.lap || 0, finished: p.finished, dnf: p.dnf };
                 }
             });
         }
@@ -427,7 +472,15 @@ function renderBoard() {
         visiblePilots.forEach((p, index) => {
             const topPos = index * spacing; 
             let gatesHtml = '';
-            if (p.gates) { p.gates.forEach(g => { gatesHtml += `<span class="seq-gate">${g.name}</span>`; }); }
+            if (p.gates) { 
+                p.gates.forEach(g => { 
+                    let finishClass = (g.name.toLowerCase() === "финиш") ? 'finish-gate' : '';
+                    gatesHtml += `<span class="seq-gate ${finishClass}">
+                                     <span class="speed-bar-container"></span>
+                                     <span class="seq-gate-text">${g.name}</span>
+                                  </span>`; 
+                }); 
+            }
 
             newBoardHtml += `
             <div class="pilot-card" id="card_${p.id}" style="top: ${topPos}px;">
@@ -445,14 +498,21 @@ function renderBoard() {
                     <div class="progress-bar"><div class="progress-fill"></div></div>
                     <div class="gate-sequence">${gatesHtml}</div>
                 </div>
-                <div class="card-right">
-                    <div style="display:flex; align-items:center; gap:10px;">
+                <div class="card-right" style="width:100%; align-items: flex-end;">
+                    <div style="display:flex; align-items:center; justify-content:flex-end; gap:10px; width:100%;">
                         <div class="status-badge"></div>
                         <div class="pilot-timer"></div>
                     </div>
-                    <div class="stats-mini">
-                        <div>Кр: <span class="stats-val last-lap-val"></span></div>
-                        <div>Δ: <span class="stats-val delta-val"></span></div>
+                    <div style="display:flex; justify-content: space-between; width: 100%; font-size: 12px; color:#888; margin-top: 4px; gap: 10px;">
+                         <div style="display:flex; flex-direction:column; gap:2px; text-align:left;">
+                             <div>Кр: <span class="stats-val last-lap-val"></span></div>
+                             <div>Δ: <span class="stats-val delta-val"></span></div>
+                         </div>
+                         <div style="display:flex; flex-direction:column; gap:2px; text-align:right;">
+                             <div>Ср: <span class="stats-val avg-spd-val" style="color:#00f2ff;"></span></div>
+                             <div>Макс: <span class="stats-val max-spd-val" style="color:#ffcc00;"></span></div>
+                             <div style="white-space: nowrap;">LIVE (<span class="live-lbl-val" style="font-size:9px;"></span>): <span class="stats-val live-spd-val"></span></div>
+                         </div>
                     </div>
                 </div>
             </div>`;
@@ -518,9 +578,15 @@ function renderBoard() {
         if (realProgress > 100) realProgress = 100;
         if (realProgress < 0) realProgress = 0;
 
-        let cleanDelta = p.deltaHtml.includes("delta-worse") ? `<span class="delta-worse">${p.deltaHtml.replace(/(<([^>]+)>)/gi, "")}</span>` 
-                       : p.deltaHtml.includes("delta-better") ? `<span class="delta-better">${p.deltaHtml.replace(/(<([^>]+)>)/gi, "")}</span>` 
-                       : `<span style="color:#aaa;">0.00</span>`;
+        let rawDelta = p.deltaHtml || "--";
+        let cleanDelta = "--";
+        if (rawDelta !== "--" && rawDelta.includes("delta-worse")) {
+            cleanDelta = `<span class="delta-worse">${rawDelta.replace(/(<([^>]+)>)/gi, "")}</span>`;
+        } else if (rawDelta !== "--" && rawDelta.includes("delta-better")) {
+            cleanDelta = `<span class="delta-better">${rawDelta.replace(/(<([^>]+)>)/gi, "")}</span>`;
+        } else if (rawDelta !== "--") {
+            cleanDelta = `<span style="color:#aaa;">${rawDelta.replace(/(<([^>]+)>)/gi, "")}</span>`;
+        }
 
         // Вставка текста и стилей (без пересоздания HTML тегов)
         let badge = card.querySelector('.status-badge');
@@ -541,12 +607,40 @@ function renderBoard() {
         let deltaVal = card.querySelector('.delta-val');
         if(deltaVal && deltaVal.innerHTML !== cleanDelta) deltaVal.innerHTML = cleanDelta;
 
+        // --- НОВЫЕ ДАННЫЕ СКОРОСТИ ---
+        let avgVal = card.querySelector('.avg-spd-val');
+        if(avgVal && avgVal.innerText !== (p.avgSpeed || "--")) avgVal.innerText = p.avgSpeed || "--";
+        
+        let maxVal = card.querySelector('.max-spd-val');
+        if(maxVal && maxVal.innerText !== (p.maxSpeed || "--")) maxVal.innerText = p.maxSpeed || "--";
+
+        let liveLbl = card.querySelector('.live-lbl-val');
+        if(liveLbl && liveLbl.innerText !== (p.liveSector || "--")) liveLbl.innerText = p.liveSector || "--";
+
+        let liveSpd = card.querySelector('.live-spd-val');
+        if(liveSpd && liveSpd.innerText !== (p.liveSpeed || "--")) liveSpd.innerText = p.liveSpeed || "--";
+        
+        if(liveSpd && p.liveSpeedClass) {
+            let pureClass = p.liveSpeedClass.replace('stat-value', '').trim();
+            liveSpd.className = `stats-val live-spd-val ${pureClass}`;
+        }
+
         // Включение/Отключение "загоревшихся" точек
+        // Включение/Отключение "загоревшихся" точек и рендер графиков
         let gateSpans = card.querySelectorAll('.seq-gate');
         if (p.gates && gateSpans.length === p.gates.length) {
             p.gates.forEach((g, gIdx) => {
                 if (g.active) gateSpans[gIdx].classList.add('active');
                 else gateSpans[gIdx].classList.remove('active');
+                
+                let barContainer = gateSpans[gIdx].querySelector('.speed-bar-container');
+                if (barContainer) {
+                    if (data.config && data.config.showSpeedBars && g.barHtml) {
+                        if (barContainer.innerHTML !== g.barHtml) barContainer.innerHTML = g.barHtml;
+                    } else {
+                        if (barContainer.innerHTML !== "") barContainer.innerHTML = "";
+                    }
+                }
             });
         }
     });
@@ -601,6 +695,100 @@ function playMonitorCountdown() {
     setTimeout(() => playMonTone(440, 300, 0.15, 'square'), 1250);
     setTimeout(() => playMonTone(440, 300, 0.15, 'square'), 2250);
     setTimeout(() => playMonTone(880, 1600, 0.15, 'square'), 3250);
+}
+
+// === НОВАЯ ОЗВУЧКА И ОТДЕЛЕННЫЙ ЗВУК КРУГА ===
+function playLapSound(pilotIndex) {
+    const baseFreq = 1200 + ((pilotIndex % 4) * 100);
+    // Двойной, более высокий и звонкий сигнал для старта нового круга
+    playMonTone(baseFreq, 100, 0.15, 'square', 0);
+    playMonTone(baseFreq * 1.25, 150, 0.15, 'square', 120);
+    triggerVibration(2, false);
+}
+
+function speakPilotStats(p, isLapEnd, isFinish = false) {
+    if (!window.speechSynthesis) return;
+    
+    let voiceLap = document.getElementById('voiceLapCb')?.checked;
+    let voiceSpeed = document.getElementById('voiceSpeedCb')?.checked;
+    let voiceDelta = document.getElementById('voiceDeltaCb')?.checked;
+    
+    if (!voiceLap && !voiceSpeed && !voiceDelta) return;
+    
+    let textParts = [];
+    
+    // 1. Озвучка круга или ФИНИША
+    if (isLapEnd) {
+        // Если финиш, берем текущий круг, если просто переход - предыдущий
+        let completedLap = isFinish ? p.lap : (p.lap > 0 ? p.lap - 1 : 0);
+        
+        if (completedLap > 0) {
+            if (voiceLap && p.lastLap && p.lastLap !== "--") {
+                let lapSec = parseFloat(p.lastLap);
+                if (!isNaN(lapSec)) {
+                    let sayLap = lapSec.toFixed(2);
+                    if(sayLap.endsWith("0")) sayLap = sayLap.slice(0, -1);
+                    sayLap = sayLap.replace(".", " и "); 
+                    
+                    if (isFinish) {
+                        // Рассчитываем итоговое время гонки
+                        let totalStr = "";
+                        let parts = (p.time || "").split(':');
+                        if (parts.length >= 2) {
+                            let m = parseInt(parts[0]);
+                            let s = parseInt(parts[1].split('.')[0]);
+                            if (m > 0) totalStr += `${m} мин `;
+                            totalStr += `${s} сек`;
+                        }
+                        textParts.push(`Финиш! Итог: ${totalStr}. Крайний круг: ${sayLap}`);
+                    } else {
+                        textParts.push(`Круг ${completedLap}. Время ${sayLap}`);
+                    }
+                }
+            } else if (isFinish && voiceLap) {
+                textParts.push(`Финиш!`);
+            }
+        }
+    }
+    
+    // 2. Озвучка дельты (на любой метке и на финише)
+    if (voiceDelta && p.deltaHtml && p.deltaHtml !== "--") {
+        let div = document.createElement('div');
+        div.innerHTML = p.deltaHtml;
+        let txt = div.textContent.replace(',', '.').trim();
+        let val = parseFloat(txt);
+        if (!isNaN(val)) {
+            if (val === 0) {
+                textParts.push(`Дельта ноль`);
+            } else {
+                let sign = val > 0 ? "плюс" : "минус";
+                let absVal = Math.abs(val).toFixed(2);
+                if(absVal.endsWith("0")) absVal = absVal.slice(0, -1);
+                if(absVal.endsWith(".")) absVal = absVal.slice(0, -1);
+                let sayVal = absVal.replace("0.", "ноль ").replace(".", " и ");
+                textParts.push(`Дельта ${sign} ${sayVal}`);
+            }
+        }
+    }
+    
+    // 3. Озвучка скорости
+    if (voiceSpeed && p.liveSpeed && p.liveSpeed !== "--") {
+        if (p.liveSpeed === "LIMIT") {
+            textParts.push(`Превышение лимита`);
+        } else {
+            let spd = parseFloat(p.liveSpeed);
+            if (!isNaN(spd)) {
+                textParts.push(`Скорость ${Math.round(spd)}`);
+            }
+        }
+    }
+    
+    if (textParts.length > 0) {
+        let msg = new SpeechSynthesisUtterance(textParts.join('. '));
+        msg.lang = 'ru-RU';
+        msg.rate = 1.3; 
+        window.speechSynthesis.speak(msg);
+    }
 }
 
 function playPilotSound(pilotIndex) {
