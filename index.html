@@ -426,9 +426,16 @@ db.ref('liveRace').on('value', (snapshot) => {
         }
         // =================================
 
-        // === ЗВУК ОСТАНОВКИ ГОНКИ СУДЬЕЙ ===
+        // === ЗВУК ОСТАНОВКИ ИЛИ ЗАВЕРШЕНИЯ ГОНКИ ===
         if (lastIsRaceRunning === true && currentRaceData.isRaceRunning === false) {
-            playStopSound();
+            let activeP = (currentRaceData.pilots || []).filter(p => p.active);
+            let allCompleted = activeP.length > 0 && activeP.every(p => p.finished || p.dnf);
+            
+            if (allCompleted) {
+                playAllFinishedSound(); // Мягкий звук
+            } else {
+                playStopSound(); // Грубый звук
+            }
         }
         lastIsRaceRunning = currentRaceData.isRaceRunning === true;
 
@@ -915,6 +922,18 @@ function playVictorySound() {
         setTimeout(() => playMonTone(1046.50, 800, 0.4, 'triangle'), 450); // Финальная нота долгая!
     }
     if (monVibroEnabled && navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 400]);
+}
+
+// Приятный аккорд, когда все пилоты завершили гонку
+function playAllFinishedSound() {
+    if (monSoundEnabled) {
+        setTimeout(() => playMonTone(523.25, 200, 0.2, 'sine'), 0);
+        setTimeout(() => playMonTone(659.25, 200, 0.2, 'sine'), 200);
+        setTimeout(() => playMonTone(783.99, 400, 0.2, 'sine'), 400);
+    }
+    if (monVibroEnabled && navigator.vibrate) {
+        navigator.vibrate([100, 50, 100, 50, 200]);
+    }
 }
 
 // 8-битный звук схода с трассы (С БРЯКОМ!)
