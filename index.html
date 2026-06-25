@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=0.8, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -20,10 +20,6 @@
     --card-height-mob: 245px; 
 }
 
-html {
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-}
 
 body { 
     background: var(--bg-main); color: #fff; font-family: 'Courier New', monospace; 
@@ -236,9 +232,7 @@ body {
 
 /* --- УНИВЕРСАЛЬНАЯ КОМПАКТНАЯ КАРТОЧКА (Для любых телефонов, вертикально и горизонтально) --- */
 @media (max-width: 900px), (max-height: 600px) and (orientation: landscape) {
-    body { 
-        zoom: 0.8;
-        padding: 4px; }
+    body { padding: 4px; }
     .content-area { width: 100%; gap: 10px; }
     
     .gate-sequence { 
