@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#080808">
-<title>RaceControl - Монитор Зрителей</title>
+<title>Монитор</title>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <style>
@@ -15,8 +15,8 @@
 :root {
     --bg-main: #050505;
     --bg-card: #111;
-    --card-height-pc: 115px; 
-    --card-height-mob: 245px; /* Было 185px, стало 220px */
+    --card-height-pc: 170px; /* Увеличили для 2 этажей */
+    --card-height-mob: 245px; 
 }
 
 body { 
@@ -96,13 +96,35 @@ body {
 
 .map-container { 
     width: 100%; display: none; justify-content: center; align-items: center;
-    border-radius: 12px; border: 1px solid #222; background: #0a0a0a; padding: 5px; box-sizing: border-box;
+    border-radius: 12px; border: 1px solid #222; background: #0a0a0a; padding: 0; box-sizing: border-box;
+    height: 35vh; min-height: 120px; position: relative; overflow: hidden;
+    container-type: size; flex-shrink: 0;
 }
-/* 3. Даем карте больше высоты на больших экранах */
 #specTrackMap { 
-    position: relative; width: 100%; max-height: 50vh; /* Было 40vh */
-    max-width: calc(50vh * var(--ar, 1.7778)); aspect-ratio: var(--ar, 1.7778); margin: 0 auto; 
+    position: relative; width: 100%; max-height: 100%; 
+    aspect-ratio: var(--ar, 1.7778); max-width: calc(100cqh * var(--ar, 1.7778)); 
+    margin: 0 auto; 
 }
+#specTrackMapBg { 
+    position: absolute; inset: 0; background-size: 100% 100%; 
+    background-position: center; background-repeat: no-repeat; z-index: 1; pointer-events: none;
+}
+
+.map-zoom-controls {
+    position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 8px; z-index: 20;
+}
+.map-zoom-btn {
+    background: rgba(10, 10, 10, 0.7); color: #00f2ff; border: 1px solid #00f2ff; border-radius: 6px;
+    width: 40px; height: 40px; font-size: 28px; line-height: 1; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; user-select: none; transition: 0.2s; box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+.map-zoom-btn:active { background: #00f2ff; color: #000; }
+
+/* Стили для обновленной шапки */
+.header-center { display: flex; flex-direction: column; align-items: center; }
+.voice-toggles { display: flex; gap: 10px; font-size: 11px; color: #aaa; margin-top: 5px; font-weight: bold; flex-wrap: wrap; justify-content: center; }
+.voice-toggles label { cursor: pointer; display: flex; align-items: center; gap: 3px; }
+
 #specTrackMapBg { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; }
 .gate-marker { position: absolute; width: 60px; transform: translate(-50%, -50%); text-align: center; z-index: 10;}
 .gate-label { font-weight: bold; color: #fff; text-shadow: 1px 1px 3px #000; font-size: 11px; margin-top: 2px;}
@@ -121,42 +143,43 @@ body {
     50% { opacity: 0.3; text-shadow: 0 0 8px #00ff00; }
     100% { opacity: 1; }
 }
-.live-speed-text { animation: pulseLive 1.5s infinite; color: #00ff00; font-weight: bold; }
+.live-speed-text { animation: pulseLive 1.5s infinite; color: #00ff00 !important; font-weight: bold; }
 .limit-speed-text { color: #ff0055 !important; animation: none; text-shadow: 0 0 5px #ff0055; font-weight: bold; }
 
 /* --- КАРТОЧКИ ПИЛОТОВ --- */
 .pilots-container { width: 100%; position: relative; transition: height 0.3s; }
 
-/* 4. Перенастраиваем сетку карточки под крупные элементы */
+/* 4. Перенастраиваем сетку карточки (Два этажа для ПК) */
 .pilot-card { 
     background: var(--bg-card); border: 1px solid #222; border-radius: 10px; 
     position: absolute; left: 0; right: 0; box-sizing: border-box;
     height: var(--card-height-pc); transition: top 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
     display: grid; 
-    grid-template-columns: 320px 1fr 240px; /* Расширили боковые колонки */
-    gap: 15px; align-items: center; padding: 0 20px;
+    grid-template-columns: max-content 1fr max-content; 
+    grid-template-rows: max-content 1fr; 
+    gap: 8px 15px; align-items: center; padding: 12px 20px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.3);
 }
 .pilot-card.leader { border-color: #00f2ff; box-shadow: 0 0 20px rgba(0, 242, 255, 0.1); }
 
-/* Левый блок: Аватар + Имя */
-.card-left { display: flex; align-items: center; gap: 12px; overflow: hidden; }
+/* Левый блок: Аватар + Имя (2 этаж слева) */
+.card-left { grid-column: 1; grid-row: 2; display: flex; align-items: center; gap: 12px; overflow: hidden; }
 /* 5. Значительно увеличиваем аватар и текст для ПК */
 .pilot-avatar { 
-    width: 88px; height: 88px; /* Было 50px */
+    width: 80px; height: 80px; /* Было 50px */
     border-radius: 8px; border: 2px solid #444; flex-shrink: 0;
     background-size: cover; background-position: center; background-color: #222;
     display: flex; align-items: center; justify-content: center; 
     font-size: 32px; font-weight: bold; text-shadow: 1px 1px 2px #000;
 }
 .pilot-info { display: flex; flex-direction: column; overflow: hidden; }
-.pilot-name { font-size: 24px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.pilot-name { font-size: 16px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
 .pilot-reg { font-size: 13px; color: #666; text-transform: uppercase; margin-top: 2px; }
 .fav-btn { cursor: pointer; opacity: 0.2; transition: 0.2s; font-size: 20px; filter: grayscale(100%); flex-shrink: 0;}
 .fav-btn.active { opacity: 1; filter: grayscale(0%); text-shadow: 0 0 10px #00f2ff; transform: scale(1.1);}
 
-/* Центр: Прогресс + Ворота */
-.card-center { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+/* Центр: Прогресс + Ворота (1 этаж, 100% ширины) */
+.card-center { grid-column: 1 / 4; grid-row: 1; width: 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 2px; min-width: 0; }
 .progress-bar { width: 100%; height: 8px; background: #000; border-radius: 4px; border: 1px solid #333; overflow: hidden;}
 .progress-fill { height: 100%; width: 0%; transition: width 0.3s ease-out; }
 /* Умная шкала с затуханием по краям */
@@ -188,32 +211,88 @@ body {
     font-weight: 900 !important;
 }
 
-/* Правый блок: Статистика */
-.card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-.pilot-timer { font-family: monospace; font-size: 28px; font-weight: bold; color: #00ffcc; line-height: 1;}
-.status-badge { font-size: 11px; font-weight: bold; color: #aaa; background: #222; padding: 2px 6px; border-radius: 4px;}
+/* Правый блок: Статистика (2 этаж справа) */
+.card-right { grid-column: 3; grid-row: 2; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding-right: 5px;}
+.pilot-timer { font-family: monospace; font-size: 20px; font-weight: bold; color: #00ffcc; line-height: 1;}
+.status-badge { font-size: 15px; font-weight: bold; color: #aaa; background: #222; padding: 2px 10px; border-radius: 4px; padding-right: 5px;}
 .stats-mini { font-size: 12px; color: #888; display: flex; gap: 12px; }
-.stats-val { color: #fff; font-weight: bold; margin-left: 4px; }
+.stats-val { color: #fff; font-weight: bold; margin-left: 4px; white-space: nowrap; }
 .delta-better { color: #00ff00; } .delta-worse { color: #ff4444; }
 
-/* --- МОБИЛЬНАЯ АДАПТАЦИЯ КАРТОЧКИ --- */
-@media (max-width: 800px) {
+
+/* --- КЛАССЫ ДЛЯ КРУПНОЙ СТАТИСТИКИ --- */
+.stats-board { display: flex; justify-content: flex-end; width: 100%; font-size: 11px; color: #888; margin-top: 4px; gap: 15px; }
+.stats-col-l { display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100px; flex-shrink: 0; }
+.stats-col-r { display: flex; flex-direction: column; gap: 4px; text-align: right; width: 180px; flex-shrink: 0; }
+.stat-v { font-size: 13.5px; }
+.live-label { font-size: 11px; }
+
+
+/* --- УНИВЕРСАЛЬНАЯ КОМПАКТНАЯ КАРТОЧКА (Для любых телефонов, вертикально и горизонтально) --- */
+@media (max-width: 900px), (max-height: 600px) and (orientation: landscape) {
     body { padding: 4px; }
-    .content-area { width: 100%; }
-    .pilot-card {
-        height: var(--card-height-mob); 
-        grid-template-columns: 1fr; 
-        grid-template-rows: max-content max-content max-content; /* max-content не даст рядам наехать друг на друга */
-        gap: 12px; padding: 12px; align-items: start;
+    .content-area { width: 100%; gap: 10px; }
+    
+    .gate-sequence { 
+        padding: 0 10px; 
+        -webkit-mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+        mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
     }
-    .card-left { width: 100%; justify-content: space-between; }
-    .card-center { width: 100%; }
-    .card-right { width: 100%; flex-direction: column; align-items: stretch; border-top: 1px solid #222; padding-top: 8px;}
-    .card-right > div:first-child { display: flex; justify-content: space-between; width: 100%; align-items: center; }
-    .pilot-avatar { width: 60px; height: 60px; font-size: 20px;}
-    .pilot-name { font-size: 16px; }
-    .pilot-timer { font-size: 18px; }
+    
+    /* Меняем сетку на 2 колонки: Аватар слева, остальное — резиновая зона справа */
+    .pilot-card {
+        height: 170px !important; 
+        grid-template-columns: max-content 1fr !important; 
+        grid-template-rows: max-content 1fr !important; 
+        gap: 8px 10px !important; padding: 10px 8px !important; align-items: center;
+    }
+    
+    /* 1 этаж: Прогресс-бар и точки на всю ширину (от 1 до 3 линии сетки) */
+    .card-center { grid-column: 1 / 3 !important; grid-row: 1 !important; width: 100% !important; margin-bottom: 10px;}
+    
+    /* 2 этаж слева: Фотка и Имя */
+    .card-left { grid-column: 1 !important; grid-row: 2 !important; width: auto !important; justify-content: flex-start; }
+    
+    /* 2 этаж справа: Таймер и Статистика */
+    .card-right { 
+        grid-column: 2 !important; grid-row: 2 !important; width: 100% !important; 
+        flex-direction: column !important; align-items: flex-end !important; justify-content: center !important; 
+        border-top: none !important; padding-top: 0 !important;
+        min-width: 0 !important; /* МАГИЯ: запрещает тексту выталкивать блок за пределы экрана */
+    }
+    .card-right > div:first-child { width: auto !important; }
+    
+    /* ЧИСТЫЕ РАЗМЕРЫ БЕЗ ДУБЛЕЙ */
+    .pilot-avatar { width: 80px !important; height: 80px !important; font-size: 26px !important; }
+    .pilot-name { font-size: 16px !important; }
+    .pilot-timer { font-size: 20px !important; padding: 0 !important; } /* Убрали вредный padding */
+    .status-badge { font-size: 15px !important; padding: 2px 10px !important; }
+    
+    .stats-col-r { gap: 2px !important; width: 155px !important; flex-shrink: 0 !important; }
+    .stats-col-l { gap: 2px !important; width: 90px !important; flex-shrink: 0 !important; }
+    .stats-col-r { gap: 2px !important;  }
+    .stat-v { font-size: 13.5px !important;  }
+    .live-label { font-size: 11px !important; }
 }
+
+/* --- ПЕРЕСТРОЙКА ШАПКИ ПРИ ПОВОРОТЕ (Ландшафт) --- */
+@media (max-height: 600px) and (orientation: landscape) {
+    .header { display: flex; flex-wrap: wrap; padding: 6px 15px; gap: 5px 15px; margin-bottom: 10px; border-radius: 8px;}
+    .header-info { width: 100%; flex-direction: row; justify-content: center; align-items: baseline; gap: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; }
+    .timer-title { font-size: 11px; margin: 0; }
+    #session-status { margin-top: 0; font-size: 11px; }
+    
+    /* Таймер и галочки выстраиваются в одну линию */
+    .header-center { flex: 0 1 auto; flex-direction: row; gap: 15px; align-items: center; }
+    #main-timer { font-size: 28px; margin: 0; } 
+    
+    /* Скрываем галочки в ландшафте, если мало места, или делаем их мельче */
+    .header-center > div:last-child { margin-top: 0 !important; }
+    
+    .header-controls { flex: 1 1 auto; justify-content: flex-end; gap: 8px; }
+    .header-btn { padding: 6px 10px; font-size: 11px; }
+}
+
 </style>
 </head>
 <body>
@@ -223,12 +302,12 @@ body {
         <div class="timer-title" id="spec-header-title">LIVE РЕЗУЛЬТАТЫ ГОНКИ</div>
         <div id="session-status">Ожидание загрузки...</div>
     </div>
-   <div class="header-center" style="display: flex; flex-direction: column; align-items: center;">
+   <div class="header-center">
         <div id="main-timer">00:00</div>
-        <div style="display: flex; gap: 10px; font-size: 11px; color: #aaa; margin-top: 5px; font-weight: bold; flex-wrap: wrap; justify-content: center;">
-            <label style="cursor:pointer; display:flex; align-items:center; gap:3px;"><input type="checkbox" id="voiceLapCb" style="accent-color:#00f2ff;">🗣 Время</label>
-            <label style="cursor:pointer; display:flex; align-items:center; gap:3px;"><input type="checkbox" id="voiceSpeedCb" style="accent-color:#00f2ff;">🗣 Скорость</label>
-            <label style="cursor:pointer; display:flex; align-items:center; gap:3px;"><input type="checkbox" id="voiceDeltaCb" style="accent-color:#00f2ff;">🗣 Дельта</label>
+        <div class="voice-toggles">
+            <label><input type="checkbox" id="voiceLapCb" style="accent-color:#00f2ff;">🗣 Время</label>
+            <label><input type="checkbox" id="voiceSpeedCb" style="accent-color:#00f2ff;">🗣 Скорость</label>
+            <label><input type="checkbox" id="voiceDeltaCb" style="accent-color:#00f2ff;">🗣 Дельта</label>
         </div>
     </div>
     <div class="header-controls">
@@ -241,6 +320,10 @@ body {
 <div class="content-area">
     <div class="map-container" id="map-box">
         <div id="specTrackMap"><div id="specTrackMapBg"></div></div>
+        <div class="map-zoom-controls">
+            <div class="map-zoom-btn" onclick="changeMapHeight(30)">+</div>
+            <div class="map-zoom-btn" onclick="changeMapHeight(-30)">−</div>
+        </div>
     </div>
     <div class="pilots-container" id="board"></div>
 </div>
@@ -262,10 +345,17 @@ let favoritePilots = new Set();
 let lastPilotState = {};
 let needsScroll = {};
 let lastStartSequence = 0;
+let lastIsRaceRunning = false;
 
 // Динамический расчет высоты карточек
+// Динамический расчет высоты карточек
+// Динамический расчет высоты карточек
 function getCardSpacing() {
-    return window.innerWidth <= 800 ? 255 : 130; 
+    // Если ширина планшета/телефона ИЛИ телефон повернут горизонтально
+    if (window.innerWidth <= 900 || (window.innerHeight <= 600 && window.innerWidth > window.innerHeight)) {
+        return 180; // Высота карточки (160px) + отступ (10px)
+    }
+    return 180; // Стандартная высота для ПК
 }
 
 // Перерисовка при изменении размера окна (чтобы карточки не наезжали друг на друга)
@@ -318,6 +408,12 @@ window.toggleFav = function(pid) {
     renderBoard();
 };
 
+window.changeMapHeight = function(delta) {
+    let mapBox = document.getElementById('map-box');
+    let newHeight = Math.max(120, mapBox.offsetHeight + delta); // Не дает сжать меньше 120px
+    mapBox.style.height = newHeight + 'px';
+};
+
 db.ref('liveRace').on('value', (snapshot) => {
     currentRaceData = snapshot.val();
     // === ВОЗВРАЩАЕМ ЗВУК СТАРТА ===
@@ -329,6 +425,12 @@ db.ref('liveRace').on('value', (snapshot) => {
             playMonitorCountdown();
         }
         // =================================
+
+        // === ЗВУК ОСТАНОВКИ ГОНКИ СУДЬЕЙ ===
+        if (lastIsRaceRunning === true && currentRaceData.isRaceRunning === false) {
+            playStopSound();
+        }
+        lastIsRaceRunning = currentRaceData.isRaceRunning === true;
 
         if (currentRaceData.pilots) {
             currentRaceData.pilots.forEach(p => {
@@ -487,14 +589,12 @@ function renderBoard() {
             newBoardHtml += `
             <div class="pilot-card" id="card_${p.id}" style="top: ${topPos}px;">
                 <div class="card-left">
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <div class="pilot-avatar"></div>
-                        <div class="pilot-info">
-                            <div class="pilot-name"></div>
-                            <div class="pilot-reg"></div>
-                        </div>
+                    <div class="pilot-avatar"></div>
+                    <div class="pilot-info">
+                        <div class="fav-btn" onclick="toggleFav('${p.id}')" style="font-size: 16px; margin-bottom: 2px; width: max-content;">👁️</div>
+                        <div class="pilot-name"></div>
+                        <div class="pilot-reg"></div>
                     </div>
-                    <div class="fav-btn" onclick="toggleFav('${p.id}')">👁️</div>
                 </div>
                 <div class="card-center">
                     <div class="progress-bar"><div class="progress-fill"></div></div>
@@ -505,15 +605,15 @@ function renderBoard() {
                         <div class="status-badge"></div>
                         <div class="pilot-timer"></div>
                     </div>
-                    <div style="display:flex; justify-content: space-between; width: 100%; font-size: 12px; color:#888; margin-top: 4px; gap: 10px;">
-                         <div style="display:flex; flex-direction:column; gap:2px; text-align:left;">
-                             <div>Кр: <span class="stats-val last-lap-val"></span></div>
-                             <div>Δ: <span class="stats-val delta-val"></span></div>
+                    <div class="stats-board">
+                         <div class="stats-col-l">
+                             <div><span style="display:inline-block; width:25px;">Кр:</span><span class="stats-val last-lap-val stat-v"></span></div>
+                             <div><span style="display:inline-block; width:25px;">Δ:</span><span class="stats-val delta-val stat-v"></span></div>
                          </div>
-                         <div style="display:flex; flex-direction:column; gap:2px; text-align:right;">
-                             <div>Ср: <span class="stats-val avg-spd-val" style="color:#00f2ff;"></span></div>
-                             <div>Макс: <span class="stats-val max-spd-val" style="color:#ffcc00;"></span></div>
-                             <div style="white-space: nowrap;">LIVE (<span class="live-lbl-val" style="font-size:9px;"></span>): <span class="stats-val live-spd-val"></span></div>
+                         <div class="stats-col-r">
+                             <div>Ср: <span class="stats-val avg-spd-val stat-v" style="color:#00f2ff;"></span></div>
+                             <div>Макс: <span class="stats-val max-spd-val stat-v" style="color:#ffcc00;"></span></div>
+                             <div style="white-space: nowrap;">LIVE (<span class="live-lbl-val live-label"></span>): <span class="stats-val live-spd-val stat-v"></span></div>
                          </div>
                     </div>
                 </div>
@@ -604,7 +704,16 @@ function renderBoard() {
         prog.style.boxShadow = `0 0 10px ${p.color}`;
 
         let ll = card.querySelector('.last-lap-val');
-        if(ll && ll.innerText !== p.lastLap) ll.innerText = p.lastLap;
+        let displayLapTime = "--";
+        
+        if (p.currentLapTime && p.currentLapTime !== "--") {
+            displayLapTime = p.currentLapTime;
+        } else {
+            displayLapTime = p.lastLap || "--";
+        }
+        
+        if(ll && ll.innerText !== displayLapTime) ll.innerText = displayLapTime;
+        
         
         let deltaVal = card.querySelector('.delta-val');
         if(deltaVal && deltaVal.innerHTML !== cleanDelta) deltaVal.innerHTML = cleanDelta;
@@ -624,7 +733,7 @@ function renderBoard() {
         
         if(liveSpd && p.liveSpeedClass) {
             let pureClass = p.liveSpeedClass.replace('stat-value', '').trim();
-            liveSpd.className = `stats-val live-spd-val ${pureClass}`;
+            liveSpd.className = `stats-val stat-v live-spd-val ${pureClass}`;
         }
 
         // Включение/Отключение "загоревшихся" точек
@@ -754,21 +863,19 @@ function speakPilotStats(p, isLapEnd, isFinish = false) {
     }
     
     // 2. Озвучка дельты (на любой метке и на финише)
+    // 2. Озвучка дельты (на любой метке и на финише)
     if (voiceDelta && p.deltaHtml && p.deltaHtml !== "--") {
         let div = document.createElement('div');
         div.innerHTML = p.deltaHtml;
         let txt = div.textContent.replace(',', '.').trim();
         let val = parseFloat(txt);
         if (!isNaN(val)) {
-            if (val === 0) {
-                textParts.push(`Дельта ноль`);
+            let roundedVal = Math.round(val);
+            if (roundedVal === 0) {
+                textParts.push(`Ноль`);
             } else {
-                let sign = val > 0 ? "плюс" : "минус";
-                let absVal = Math.abs(val).toFixed(2);
-                if(absVal.endsWith("0")) absVal = absVal.slice(0, -1);
-                if(absVal.endsWith(".")) absVal = absVal.slice(0, -1);
-                let sayVal = absVal.replace("0.", "ноль ").replace(".", " и ");
-                textParts.push(`Дельта ${sign} ${sayVal}`);
+                let sign = roundedVal > 0 ? "плюс" : "минус";
+                textParts.push(`${sign} ${Math.abs(roundedVal)}`);
             }
         }
     }
@@ -845,6 +952,18 @@ function toggleMonitorSound() {
         monSoundEnabled = false; 
         btn.style.background = '#ffaa00'; btn.style.color = '#000'; btn.innerText = '🔇 Звук'; 
         requestWakeLock(); 
+    }
+}
+
+// Грубый звук принудительной остановки таймера
+function playStopSound() {
+    if (monSoundEnabled) {
+        // Два низких, "тревожных" сигнала (sawtooth - более резкий звук)
+        setTimeout(() => playMonTone(250, 300, 0.2, 'sawtooth'), 0);
+        setTimeout(() => playMonTone(200, 500, 0.2, 'sawtooth'), 350);
+    }
+    if (monVibroEnabled && navigator.vibrate) {
+        navigator.vibrate([300, 100, 500]); // Длинная тяжелая вибрация
     }
 }
 
