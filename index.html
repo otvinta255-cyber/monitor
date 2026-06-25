@@ -20,8 +20,8 @@
 }
 
 html {
-    -webkit-text-size-adjust: 80%;
-    text-size-adjust: 80%;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
 }
 
 body { 
@@ -247,7 +247,7 @@ body {
     /* Меняем сетку на 2 колонки: Аватар слева, остальное — резиновая зона справа */
     .pilot-card {
         height: 170px !important; 
-        grid-template-columns: 130px 1fr !important;
+        grid-template-columns: max-content 1fr !important;
         grid-template-rows: max-content 1fr !important; 
         gap: 8px 10px !important; padding: 10px 8px !important; align-items: center;
     }
