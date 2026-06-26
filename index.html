@@ -295,6 +295,17 @@ body {
     .header-btn { padding: 6px 10px; font-size: 11px; }
 }
 
+
+/* Фикс масштаба 0.8 для режима "На весь экран" */
+html:fullscreen body,
+html:-webkit-full-screen body {
+    transform: scale(0.8) !important;
+    transform-origin: top left !important;
+    width: 125% !important; /* Взаимокомпенсация: 1 / 0.8 = 125% ширины */
+    height: 125% !important;
+    overflow-x: hidden !important;
+}
+
 </style>
 </head>
 <body>
